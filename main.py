@@ -20,6 +20,7 @@ from app.core.tray import TrayManager
 from app.database import Database
 from app.main_window import MainWindow
 from app.widgets.toast_reminder import ToastReminder
+from app.widgets.screen_shake import ScreenShakeReminder
 
 try:
     from app.pages.dashboard import DashboardPage
@@ -70,6 +71,7 @@ except Exception:
         theme_changed = Signal(str)
         sound_changed = Signal(bool)
         autostart_changed = Signal(bool)
+        shake_changed = Signal(bool)
 
         def __init__(self, parent=None):
             super().__init__(parent)
@@ -96,6 +98,7 @@ class WaterApp:
         self.sound: SoundManager | None = None
         self.tray: TrayManager | None = None
         self.toast: ToastReminder | None = None
+        self._shake_overlay: ScreenShakeReminder | None = None
 
     def run(self) -> int:
         self._prepare_runtime()
@@ -120,6 +123,7 @@ class WaterApp:
 
         self.config = AppConfig.load()
         ThemeManager.apply(self.app, self.config.theme)
+        ThemeManager.connect_system_theme_watcher(self._on_system_theme_changed)
 
     def _create_core_objects(self) -> None:
         assert self.config is not None
@@ -181,6 +185,7 @@ class WaterApp:
         self.settings_page.theme_changed.connect(self._on_theme_changed)
         self.settings_page.sound_changed.connect(self._on_sound_changed)
         self.settings_page.autostart_changed.connect(self._on_autostart_changed)
+        self.settings_page.shake_changed.connect(self._on_shake_changed)
 
         self.history_page.period_changed.connect(self.refresh_history)
 
@@ -208,6 +213,7 @@ class WaterApp:
                 "theme": self.config.theme,
                 "sound_enabled": self.config.sound_enabled,
                 "autostart_enabled": self.config.autostart_enabled,
+                "shake_reminder_enabled": self.config.shake_reminder_enabled,
             }
         )
 
@@ -224,6 +230,7 @@ class WaterApp:
     def _on_reminder_triggered(self) -> None:
         assert self.sound is not None
         self._show_toast_reminder()
+        self._show_shake_if_enabled()
         self.sound.play_reminder()
 
     def _show_toast_reminder(self) -> None:
@@ -246,6 +253,39 @@ class WaterApp:
             return
         self.toast.deleteLater()
         self.toast = None
+
+    # ── Screen shake overlay ──
+
+    def _show_shake_if_enabled(self) -> None:
+        if self.config is None or not self.config.shake_reminder_enabled:
+            return
+        self._create_shake_overlay()
+        assert self._shake_overlay is not None
+        self._shake_overlay.show_shake()
+
+    def _create_shake_overlay(self) -> None:
+        if self._shake_overlay is not None:
+            self._shake_overlay.close()
+            self._shake_overlay.deleteLater()
+            self._shake_overlay = None
+
+        self._shake_overlay = ScreenShakeReminder(drink_amount=200)
+        self._shake_overlay.drink_clicked.connect(self._on_shake_drink_clicked)
+        self._shake_overlay.dismissed.connect(self._on_shake_dismissed)
+
+    def _on_shake_drink_clicked(self, amount: int) -> None:
+        self._add_intake_and_refresh(amount, "reminder")
+
+    def _on_shake_dismissed(self) -> None:
+        if self._shake_overlay is None:
+            return
+        self._shake_overlay.deleteLater()
+        self._shake_overlay = None
+
+    def _on_system_theme_changed(self, theme_name: str) -> None:
+        """Called when OS theme changes while in 'auto' mode."""
+        if self.app is not None:
+            ThemeManager.apply(self.app, "auto")
 
     def _on_tray_quick_drink(self, amount: int) -> None:
         self._add_intake_and_refresh(amount, "tray")
@@ -307,7 +347,7 @@ class WaterApp:
         if self.app is not None:
             ThemeManager.apply(self.app, theme_name)
         if self.config is not None:
-            self.config.theme = "dark" if theme_name == "dark" else "light"
+            self.config.theme = theme_name
             self.config.save()
 
     def _on_sound_changed(self, enabled: bool) -> None:
@@ -326,6 +366,11 @@ class WaterApp:
 
         if self.config is not None:
             self.config.autostart_enabled = enabled_value
+            self.config.save()
+
+    def _on_shake_changed(self, enabled: bool) -> None:
+        if self.config is not None:
+            self.config.shake_reminder_enabled = bool(enabled)
             self.config.save()
 
     def _on_engine_state_changed(self, state: str) -> None:
@@ -354,6 +399,7 @@ class WaterApp:
                 "theme": self.config.theme,
                 "sound_enabled": self.config.sound_enabled,
                 "autostart_enabled": self.config.autostart_enabled,
+                "shake_reminder_enabled": self.config.shake_reminder_enabled,
             }
         )
 
@@ -438,6 +484,11 @@ class WaterApp:
             self._save_window_geometry()
         except Exception:
             pass
+
+        if self._shake_overlay is not None:
+            self._shake_overlay.close()
+            self._shake_overlay.deleteLater()
+            self._shake_overlay = None
 
         if self.toast is not None:
             self.toast.close()

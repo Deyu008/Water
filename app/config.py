@@ -12,10 +12,11 @@ from .core.paths import get_config_dir
 class AppConfig:
     daily_goal_ml: int = 2000
     reminder_interval_min: int = 60
-    theme: str = "light"
+    theme: str = "light"  # "light", "dark", or "auto"
     sound_enabled: bool = True
     autostart_enabled: bool = False
     reminder_sound: str = "default.wav"
+    shake_reminder_enabled: bool = False
     window_geometry: dict[str, int] | None = None
 
     @classmethod
@@ -43,7 +44,7 @@ class AppConfig:
                 raw[key] = value
 
         theme_raw = raw.get("theme")
-        theme_value = theme_raw if isinstance(theme_raw, str) and theme_raw in {"light", "dark"} else "light"
+        theme_value = theme_raw if isinstance(theme_raw, str) and theme_raw in {"light", "dark", "auto"} else "light"
 
         reminder_sound_raw = raw.get("reminder_sound")
         reminder_sound_value = reminder_sound_raw if isinstance(reminder_sound_raw, str) else "default.wav"
@@ -55,6 +56,7 @@ class AppConfig:
             sound_enabled=_to_bool(raw.get("sound_enabled"), True),
             autostart_enabled=_to_bool(raw.get("autostart_enabled"), False),
             reminder_sound=reminder_sound_value,
+            shake_reminder_enabled=_to_bool(raw.get("shake_reminder_enabled"), False),
             window_geometry=_to_window_geometry(raw.get("window_geometry")),
         )
 

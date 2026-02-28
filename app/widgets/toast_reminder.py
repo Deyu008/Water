@@ -4,6 +4,8 @@ from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, Qt, 
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QApplication, QPushButton, QGraphicsDropShadowEffect, QWidget
 
+from app.core.theme import ThemeManager
+
 
 class ToastReminder(QWidget):
     drink_clicked = Signal(int)
@@ -20,10 +22,13 @@ class ToastReminder(QWidget):
         self._is_dismissing = False
 
         self.setWindowFlags(
-            Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
 
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setBlurRadius(30)
@@ -36,44 +41,48 @@ class ToastReminder(QWidget):
         self._drink_btn.clicked.connect(self._on_drink_clicked)
         self._later_btn.clicked.connect(self._dismiss)
 
-        self._drink_btn.setStyleSheet(
-            "QPushButton {"
-            "background-color: rgba(58, 134, 255, 230);"
-            "color: white;"
-            "border: none;"
-            "border-radius: 10px;"
-            "font-weight: 600;"
-            "padding: 8px 14px;"
-            "}"
-            "QPushButton:hover { background-color: rgba(70, 145, 255, 245); }"
-            "QPushButton:pressed { background-color: rgba(42, 116, 230, 255); }"
-        )
-        self._later_btn.setStyleSheet(
-            "QPushButton {"
-            "background-color: rgba(255, 255, 255, 45);"
-            "color: rgba(255, 255, 255, 220);"
-            "border: 1px solid rgba(255, 255, 255, 60);"
-            "border-radius: 10px;"
-            "padding: 8px 12px;"
-            "}"
-            "QPushButton:hover { background-color: rgba(255, 255, 255, 70); }"
-            "QPushButton:pressed { background-color: rgba(255, 255, 255, 85); }"
-        )
-
         self._auto_timer = QTimer(self)
         self._auto_timer.setSingleShot(True)
         self._auto_timer.timeout.connect(self._dismiss)
 
         self._slide_anim = QPropertyAnimation(self, b"geometry", self)
         self._slide_anim.setDuration(300)
-        self._slide_anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._slide_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
 
         self._fade_anim = QPropertyAnimation(self, b"windowOpacity", self)
         self._fade_anim.setDuration(220)
-        self._fade_anim.setEasingCurve(QEasingCurve.InCubic)
+        self._fade_anim.setEasingCurve(QEasingCurve.Type.InCubic)
         self._fade_anim.finished.connect(self._on_fade_finished)
 
         self._update_size_and_layout()
+        ThemeManager.signals.theme_applied.connect(self.apply_theme)
+        self.apply_theme()
+
+    def apply_theme(self, *_args):
+        self._drink_btn.setStyleSheet(
+            "QPushButton {"
+            f"background-color: {ThemeManager.color('toast_btn_bg')};"
+            f"color: {ThemeManager.color('text_on_accent')};"
+            "border: none;"
+            "border-radius: 10px;"
+            "font-weight: 600;"
+            "padding: 8px 14px;"
+            "}"
+            f"QPushButton:hover {{ background-color: {ThemeManager.color('toast_btn_hover')}; }}"
+            f"QPushButton:pressed {{ background-color: {ThemeManager.color('toast_btn_pressed')}; }}"
+        )
+        self._later_btn.setStyleSheet(
+            "QPushButton {"
+            f"background-color: {ThemeManager.color('toast_later_bg')};"
+            f"color: {ThemeManager.color('toast_later_text')};"
+            f"border: 1px solid {ThemeManager.color('toast_later_border')};"
+            "border-radius: 10px;"
+            "padding: 8px 12px;"
+            "}"
+            f"QPushButton:hover {{ background-color: {ThemeManager.color('toast_later_hover')}; }}"
+            f"QPushButton:pressed {{ background-color: {ThemeManager.color('toast_later_pressed')}; }}"
+        )
+        self.update()
 
     def show_reminder(self):
         self._is_dismissing = False
@@ -120,22 +129,22 @@ class ToastReminder(QWidget):
     def paintEvent(self, event):
         del event
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         rect = self.rect().adjusted(8, 8, -8, -8)
         radius = 18
 
         gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
-        gradient.setColorAt(0.0, QColor(28, 47, 85, 225))
-        gradient.setColorAt(1.0, QColor(20, 30, 54, 225))
+        gradient.setColorAt(0.0, ThemeManager.qcolor("toast_bg_start"))
+        gradient.setColorAt(1.0, ThemeManager.qcolor("toast_bg_end"))
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(gradient)
         painter.drawRoundedRect(rect, radius, radius)
 
-        border_pen = QPen(QColor(255, 255, 255, 36), 1)
+        border_pen = QPen(ThemeManager.qcolor("toast_border"), 1)
         painter.setPen(border_pen)
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(rect.adjusted(0, 0, -1, -1), radius, radius)
 
         icon_center = QPoint(rect.left() + 38, rect.top() + 38)
@@ -150,14 +159,18 @@ class ToastReminder(QWidget):
         title_font.setPointSize(14)
         title_font.setBold(True)
         painter.setFont(title_font)
-        painter.setPen(QColor(245, 250, 255))
-        painter.drawText(title_rect, Qt.AlignLeft | Qt.AlignVCenter, self._title)
+        painter.setPen(ThemeManager.qcolor("toast_title"))
+        painter.drawText(title_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self._title)
 
         body_font = QFont(self.font())
         body_font.setPointSize(10)
         painter.setFont(body_font)
-        painter.setPen(QColor(219, 230, 246, 230))
-        painter.drawText(body_rect, Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, self._message)
+        painter.setPen(ThemeManager.qcolor("toast_body"))
+        painter.drawText(
+            body_rect,
+            Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+            self._message,
+        )
 
     def _on_drink_clicked(self):
         self.drink_clicked.emit(self._drink_amount)
@@ -184,7 +197,7 @@ class ToastReminder(QWidget):
 
         title_h = QFontMetrics(title_font).height()
         body_rect = QFontMetrics(body_font).boundingRect(
-            QRect(0, 0, text_width, 1000), Qt.TextWordWrap, self._message
+            QRect(0, 0, text_width, 1000), Qt.TextFlag.TextWordWrap, self._message
         )
         text_bottom = padding + title_h + 8 + body_rect.height()
 
@@ -230,6 +243,6 @@ class ToastReminder(QWidget):
 
         highlight = QPainterPath()
         highlight.addEllipse(QPoint(center.x() - 4, center.y() - 1), 4, 6)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(255, 255, 255, 110))
         painter.drawPath(highlight)

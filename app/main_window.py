@@ -1,8 +1,8 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
-                               QStackedWidget, QLabel, QSizeGrip, QApplication)
-from PySide6.QtCore import Qt, QSize, QPoint, QRect, QEvent
-from PySide6.QtGui import QColor, QPalette, QCursor, QMouseEvent
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QSizeGrip
+from PySide6.QtCore import Qt, QPoint
+from PySide6.QtGui import QMouseEvent
 
+from app.core.theme import ThemeManager
 from app.widgets.title_bar import TitleBar
 from app.widgets.sidebar import Sidebar
 
@@ -13,8 +13,8 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumSize(750, 500)
         self.resize(900, 650)
         
@@ -26,6 +26,8 @@ class MainWindow(QMainWindow):
         
         self._build_ui()
         self._setup_connections()
+        ThemeManager.signals.theme_applied.connect(lambda _: self.apply_theme())
+        self.apply_theme()
         
         # Enable mouse tracking for resize cursor updates
         self.setMouseTracking(True)
@@ -36,13 +38,6 @@ class MainWindow(QMainWindow):
         # We need a container for the shadow effect and rounded corners
         self.container = QWidget()
         self.container.setObjectName("Container")
-        self.container.setStyleSheet("""
-            QWidget#Container {
-                background-color: #FAFAFA;
-                border-radius: 10px;
-                border: 1px solid #E0E0E0;
-            }
-        """)
         self.setCentralWidget(self.container)
         
         # Main Layout
@@ -69,9 +64,9 @@ class MainWindow(QMainWindow):
         self.content_layout.addWidget(self.stack)
         
         # Placeholder Pages
-        self._add_placeholder_page("Dashboard 💧", "#FFFFFF")
-        self._add_placeholder_page("History 📊", "#FFFFFF")
-        self._add_placeholder_page("Settings ⚙", "#FFFFFF")
+        self._add_placeholder_page("Dashboard 💧", "")
+        self._add_placeholder_page("History 📊", "")
+        self._add_placeholder_page("Settings ⚙", "")
         
         self.main_layout.addWidget(self.content_area)
         
@@ -87,8 +82,8 @@ class MainWindow(QMainWindow):
 
     def _add_placeholder_page(self, text, bg_color):
         page = QLabel(text)
-        page.setAlignment(Qt.AlignCenter)
-        page.setStyleSheet(f"background-color: {bg_color}; font-size: 24px; color: #BBB; border-top-left-radius: 10px;")
+        page.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        page.setStyleSheet(f"font-size: 24px; color: {ThemeManager.color('text_muted')};")
         self.stack.addWidget(page)
 
     def _setup_connections(self):
@@ -103,28 +98,23 @@ class MainWindow(QMainWindow):
     def _toggle_maximize(self):
         if self.isMaximized():
             self.showNormal()
-            self.container.setStyleSheet("""
-                QWidget#Container {
-                    background-color: #FAFAFA;
-                    border-radius: 10px;
-                    border: 1px solid #E0E0E0;
-                }
-            """)
-            self.main_layout.setContentsMargins(0, 0, 0, 0) # Restore margins if needed
         else:
             self.showMaximized()
-            # Remove border radius when maximized
-            self.container.setStyleSheet("""
-                QWidget#Container {
-                    background-color: #FAFAFA;
-                    border-radius: 0px;
-                    border: none;
-                }
-            """)
+        self.apply_theme()
+
+    def apply_theme(self):
+        _ = ThemeManager.colors()
+        if self.isMaximized():
+            self.container.setObjectName("ContainerMaximized")
+        else:
+            self.container.setObjectName("Container")
+        # Force style refresh
+        self.container.style().unpolish(self.container)
+        self.container.style().polish(self.container)
             
     # Resize Logic
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             edge = self._hit_test(event.pos())
             if edge:
                 self._resizing = True
@@ -148,14 +138,14 @@ class MainWindow(QMainWindow):
             if edge:
                 self.setCursor(self._get_cursor(edge))
             else:
-                self.setCursor(Qt.ArrowCursor)
+                self.setCursor(Qt.CursorShape.ArrowCursor)
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._resizing = False
             self._resize_edge = None
-            self.setCursor(Qt.ArrowCursor) # Reset cursor
+            self.setCursor(Qt.CursorShape.ArrowCursor) # Reset cursor
         super().mouseReleaseEvent(event)
 
     def _hit_test(self, pos: QPoint):
@@ -179,18 +169,20 @@ class MainWindow(QMainWindow):
 
     def _get_cursor(self, edge):
         cursors = {
-            'top_left': Qt.SizeFDiagCursor,
-            'top_right': Qt.SizeBDiagCursor,
-            'bottom_left': Qt.SizeBDiagCursor,
-            'bottom_right': Qt.SizeFDiagCursor,
-            'top': Qt.SizeVerCursor,
-            'bottom': Qt.SizeVerCursor,
-            'left': Qt.SizeHorCursor,
-            'right': Qt.SizeHorCursor
+            'top_left': Qt.CursorShape.SizeFDiagCursor,
+            'top_right': Qt.CursorShape.SizeBDiagCursor,
+            'bottom_left': Qt.CursorShape.SizeBDiagCursor,
+            'bottom_right': Qt.CursorShape.SizeFDiagCursor,
+            'top': Qt.CursorShape.SizeVerCursor,
+            'bottom': Qt.CursorShape.SizeVerCursor,
+            'left': Qt.CursorShape.SizeHorCursor,
+            'right': Qt.CursorShape.SizeHorCursor,
         }
-        return cursors.get(edge, Qt.ArrowCursor)
+        return cursors.get(edge, Qt.CursorShape.ArrowCursor)
 
     def _handle_resize(self, global_pos):
+        if not self._resize_edge:
+            return
         diff = global_pos - self._drag_pos
         geo = self.geometry()
         

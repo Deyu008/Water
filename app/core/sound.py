@@ -6,7 +6,11 @@ import wave
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QUrl
-from PySide6.QtMultimedia import QSoundEffect
+
+try:
+    from PySide6.QtMultimedia import QSoundEffect
+except (ImportError, OSError):
+    QSoundEffect = None  # type: ignore[assignment,misc]
 
 
 class SoundManager(QObject):
@@ -18,13 +22,15 @@ class SoundManager(QObject):
         self._sound_path = app_dir / "resources" / "sounds" / "reminder.wav"
         self._ensure_default_sound(self._sound_path)
 
-        self._effect = QSoundEffect(self)
-        self._effect.setLoopCount(1)
-        self._effect.setVolume(0.7)
-        self._effect.setSource(QUrl.fromLocalFile(str(self._sound_path)))
+        self._effect = None
+        if QSoundEffect is not None:
+            self._effect = QSoundEffect(self)
+            self._effect.setLoopCount(1)
+            self._effect.setVolume(0.7)
+            self._effect.setSource(QUrl.fromLocalFile(str(self._sound_path)))
 
     def play_reminder(self):
-        if not self._enabled:
+        if not self._enabled or self._effect is None:
             return
         if not self._sound_path.exists():
             self._ensure_default_sound(self._sound_path)
@@ -36,7 +42,8 @@ class SoundManager(QObject):
 
     def set_volume(self, volume: float):
         clamped = max(0.0, min(1.0, float(volume)))
-        self._effect.setVolume(clamped)
+        if self._effect is not None:
+            self._effect.setVolume(clamped)
 
     @property
     def is_enabled(self) -> bool:

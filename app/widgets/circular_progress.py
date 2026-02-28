@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRectF
-from PySide6.QtGui import QPainter, QColor, QPen, QFont, QConicalGradient, QBrush
+from PySide6.QtGui import QPainter, QColor, QPen, QFont, QConicalGradient, QBrush, QFontMetrics
+
+from app.core.theme import ThemeManager
 
 class CircularProgress(QWidget):
     """
@@ -23,18 +25,32 @@ class CircularProgress(QWidget):
         self._goal_ml = 2000
         
         # Colors
-        self._track_color = QColor(240, 240, 240)
-        self._progress_start_color = QColor("#2196F3")
-        self._progress_end_color = QColor("#64B5F6")
-        self._text_color = QColor(33, 33, 33)
-        self._subtext_color = QColor(117, 117, 117)
+        self._track_color = QColor()
+        self._progress_start_color = QColor()
+        self._progress_end_color = QColor()
+        self._text_color = QColor()
+        self._subtext_color = QColor()
         
         self._ring_width = 16
         
         # Animation
         self._anim = QPropertyAnimation(self, b"progress_value")
         self._anim.setDuration(800)
-        self._anim.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        ThemeManager.signals.theme_applied.connect(self._on_theme_applied)
+        self.apply_theme()
+
+    def _on_theme_applied(self, _theme_name: str):
+        self.apply_theme()
+
+    def apply_theme(self):
+        self._track_color = ThemeManager.qcolor("progress_track")
+        self._progress_start_color = ThemeManager.qcolor("progress_start")
+        self._progress_end_color = ThemeManager.qcolor("progress_end")
+        self._text_color = ThemeManager.qcolor("progress_text")
+        self._subtext_color = ThemeManager.qcolor("progress_subtext")
+        self.update()
 
     def get_progress_value(self):
         return self._progress
@@ -63,7 +79,7 @@ class CircularProgress(QWidget):
         
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
         # Setup geometry
         width = self.width()
@@ -83,7 +99,7 @@ class CircularProgress(QWidget):
         # 1. Draw track ring
         track_pen = QPen(self._track_color)
         track_pen.setWidth(self._ring_width)
-        track_pen.setCapStyle(Qt.RoundCap)
+        track_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(track_pen)
         painter.drawEllipse(rect)
         
@@ -109,7 +125,7 @@ class CircularProgress(QWidget):
             
             pen_brush = QBrush(gradient)
             progress_pen = QPen(pen_brush, self._ring_width)
-            progress_pen.setCapStyle(Qt.RoundCap)
+            progress_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(progress_pen)
             
             # Span angle is negative for clockwise
@@ -122,18 +138,35 @@ class CircularProgress(QWidget):
 
         # 3. Draw Center Text
         painter.setPen(self._text_color)
-        
+
         # Current Value (Big)
-        font_big = QFont("Segoe UI", 32, QFont.Bold)
+        font_size = max(12, int(side * 0.16))
+        font_big = QFont("Segoe UI", font_size, QFont.Weight.Bold)
         painter.setFont(font_big)
-        
-        text_rect_big = QRectF(center_x - radius, center_y - 25, radius * 2, 50)
-        painter.drawText(text_rect_big, Qt.AlignCenter, str(self._current_ml))
-        
+
+        fm_big = QFontMetrics(font_big)
+        big_height = fm_big.height()
+
         # Goal Value (Small)
+        font_size_small = max(8, int(side * 0.06))
+        font_small = QFont("Segoe UI", font_size_small)
+        fm_small = QFontMetrics(font_small)
+        small_height = fm_small.height()
+
+        text_gap = max(4, int(side * 0.02))
+        text_block_height = big_height + text_gap + small_height
+        text_top = center_y - text_block_height / 2
+
+        text_rect_big = QRectF(center_x - radius, text_top, radius * 2, float(big_height))
+        painter.drawText(text_rect_big, Qt.AlignmentFlag.AlignCenter, str(self._current_ml))
+
         painter.setPen(self._subtext_color)
-        font_small = QFont("Segoe UI", 12)
         painter.setFont(font_small)
-        
-        text_rect_small = QRectF(center_x - radius, center_y + 25, radius * 2, 30)
-        painter.drawText(text_rect_small, Qt.AlignCenter, f"/ {self._goal_ml} ml")
+
+        text_rect_small = QRectF(
+            center_x - radius,
+            text_top + big_height + text_gap,
+            radius * 2,
+            float(small_height),
+        )
+        painter.drawText(text_rect_small, Qt.AlignmentFlag.AlignCenter, f"/ {self._goal_ml} ml")
