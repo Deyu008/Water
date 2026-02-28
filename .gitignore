@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Conda
+.conda/
+
+# Build artifacts
+build/
+build_win/
+build_win_onefile/
+dist/
+dist_win/
+*.spec.bak
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# IDE/editor
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

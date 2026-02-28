@@ -1,0 +1,218 @@
+from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
+                               QStackedWidget, QLabel, QSizeGrip, QApplication)
+from PySide6.QtCore import Qt, QSize, QPoint, QRect, QEvent
+from PySide6.QtGui import QColor, QPalette, QCursor, QMouseEvent
+
+from app.widgets.title_bar import TitleBar
+from app.widgets.sidebar import Sidebar
+
+class MainWindow(QMainWindow):
+    """
+    Main application window with frameless design.
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setMinimumSize(750, 500)
+        self.resize(900, 650)
+        
+        # Resize logic variables
+        self._resize_margin = 5
+        self._resizing = False
+        self._resize_edge = None
+        self._drag_pos = None
+        
+        self._build_ui()
+        self._setup_connections()
+        
+        # Enable mouse tracking for resize cursor updates
+        self.setMouseTracking(True)
+        self.centralWidget().setMouseTracking(True)
+
+    def _build_ui(self):
+        # Main Container (Central Widget)
+        # We need a container for the shadow effect and rounded corners
+        self.container = QWidget()
+        self.container.setObjectName("Container")
+        self.container.setStyleSheet("""
+            QWidget#Container {
+                background-color: #FAFAFA;
+                border-radius: 10px;
+                border: 1px solid #E0E0E0;
+            }
+        """)
+        self.setCentralWidget(self.container)
+        
+        # Main Layout
+        self.main_layout = QVBoxLayout(self.container)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        
+        # 1. Title Bar
+        self.title_bar = TitleBar(self)
+        self.main_layout.addWidget(self.title_bar)
+        
+        # 2. Content Area (Sidebar + Stack)
+        self.content_area = QWidget()
+        self.content_layout = QHBoxLayout(self.content_area)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(0)
+        
+        # Sidebar
+        self.sidebar = Sidebar()
+        self.content_layout.addWidget(self.sidebar)
+        
+        # Stacked Widget (Pages)
+        self.stack = QStackedWidget()
+        self.content_layout.addWidget(self.stack)
+        
+        # Placeholder Pages
+        self._add_placeholder_page("Dashboard 💧", "#FFFFFF")
+        self._add_placeholder_page("History 📊", "#FFFFFF")
+        self._add_placeholder_page("Settings ⚙", "#FFFFFF")
+        
+        self.main_layout.addWidget(self.content_area)
+        
+        # Size Grip (Bottom Right)
+        # We add it to the main layout but strictly it should float or be in a status bar
+        # For a clean frameless window, usually we just handle events.
+        # But let's add a small invisible one for fallback
+        self.size_grip = QSizeGrip(self.container)
+        self.size_grip.setStyleSheet("width: 16px; height: 16px; margin: 0px; background: transparent;")
+        # Position handled by layout or manual placement. 
+        # In a VBox it's hard. Let's just rely on mouse events for resize.
+        self.size_grip.hide() # Hide explicit grip, use mouse events
+
+    def _add_placeholder_page(self, text, bg_color):
+        page = QLabel(text)
+        page.setAlignment(Qt.AlignCenter)
+        page.setStyleSheet(f"background-color: {bg_color}; font-size: 24px; color: #BBB; border-top-left-radius: 10px;")
+        self.stack.addWidget(page)
+
+    def _setup_connections(self):
+        # Sidebar navigation
+        self.sidebar.page_changed.connect(self.stack.setCurrentIndex)
+        
+        # Title bar actions
+        self.title_bar.minimize_clicked.connect(self.showMinimized)
+        self.title_bar.maximize_clicked.connect(self._toggle_maximize)
+        self.title_bar.close_clicked.connect(self.close)
+
+    def _toggle_maximize(self):
+        if self.isMaximized():
+            self.showNormal()
+            self.container.setStyleSheet("""
+                QWidget#Container {
+                    background-color: #FAFAFA;
+                    border-radius: 10px;
+                    border: 1px solid #E0E0E0;
+                }
+            """)
+            self.main_layout.setContentsMargins(0, 0, 0, 0) # Restore margins if needed
+        else:
+            self.showMaximized()
+            # Remove border radius when maximized
+            self.container.setStyleSheet("""
+                QWidget#Container {
+                    background-color: #FAFAFA;
+                    border-radius: 0px;
+                    border: none;
+                }
+            """)
+            
+    # Resize Logic
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            edge = self._hit_test(event.pos())
+            if edge:
+                self._resizing = True
+                self._resize_edge = edge
+                self._drag_pos = event.globalPosition().toPoint()
+                event.accept()
+            else:
+                super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.isMaximized():
+            super().mouseMoveEvent(event)
+            return
+
+        if self._resizing:
+            self._handle_resize(event.globalPosition().toPoint())
+            event.accept()
+        else:
+            # Update cursor shape
+            edge = self._hit_test(event.pos())
+            if edge:
+                self.setCursor(self._get_cursor(edge))
+            else:
+                self.setCursor(Qt.ArrowCursor)
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self._resizing = False
+            self._resize_edge = None
+            self.setCursor(Qt.ArrowCursor) # Reset cursor
+        super().mouseReleaseEvent(event)
+
+    def _hit_test(self, pos: QPoint):
+        rect = self.rect()
+        m = self._resize_margin
+        
+        left = pos.x() < m
+        right = pos.x() > rect.width() - m
+        top = pos.y() < m
+        bottom = pos.y() > rect.height() - m
+        
+        if top and left: return 'top_left'
+        if top and right: return 'top_right'
+        if bottom and left: return 'bottom_left'
+        if bottom and right: return 'bottom_right'
+        if top: return 'top'
+        if bottom: return 'bottom'
+        if left: return 'left'
+        if right: return 'right'
+        return None
+
+    def _get_cursor(self, edge):
+        cursors = {
+            'top_left': Qt.SizeFDiagCursor,
+            'top_right': Qt.SizeBDiagCursor,
+            'bottom_left': Qt.SizeBDiagCursor,
+            'bottom_right': Qt.SizeFDiagCursor,
+            'top': Qt.SizeVerCursor,
+            'bottom': Qt.SizeVerCursor,
+            'left': Qt.SizeHorCursor,
+            'right': Qt.SizeHorCursor
+        }
+        return cursors.get(edge, Qt.ArrowCursor)
+
+    def _handle_resize(self, global_pos):
+        diff = global_pos - self._drag_pos
+        geo = self.geometry()
+        
+        if 'right' in self._resize_edge:
+            new_width = geo.width() + diff.x()
+            if new_width >= self.minimumWidth():
+                geo.setWidth(new_width)
+        
+        if 'bottom' in self._resize_edge:
+            new_height = geo.height() + diff.y()
+            if new_height >= self.minimumHeight():
+                geo.setHeight(new_height)
+                
+        if 'left' in self._resize_edge:
+            new_width = geo.width() - diff.x()
+            if new_width >= self.minimumWidth():
+                geo.setLeft(geo.left() + diff.x())
+                
+        if 'top' in self._resize_edge:
+            new_height = geo.height() - diff.y()
+            if new_height >= self.minimumHeight():
+                geo.setTop(geo.top() + diff.y())
+                
+        self.setGeometry(geo)
+        self._drag_pos = global_pos
