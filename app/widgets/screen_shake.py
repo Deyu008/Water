@@ -40,13 +40,13 @@ class ScreenShakeReminder(QWidget):
 
         # ── window setup ──
         self.setWindowFlags(
-            Qt.Window
-            | Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.NoDropShadowWindowHint
+            Qt.WindowType.Window
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
 
         # ── shake offset (animated property) ──
         self._shake_offset = 0
@@ -65,19 +65,19 @@ class ScreenShakeReminder(QWidget):
         self._last_drop_size: tuple[int, int] = (0, 0)
 
         # ── cached fonts for paintEvent ──
-        self._title_font = QFont("Segoe UI", 28, QFont.Bold)
-        self._sub_font = QFont("Segoe UI", 14)
+        self._title_font = QFont(self.font().family(), 28, QFont.Weight.Bold)
+        self._sub_font = QFont(self.font().family(), 14)
         # ── opacity effect for fade-out ──
         self._opacity_effect = QGraphicsOpacityEffect(self)
         self._opacity_effect.setOpacity(1.0)
         self.setGraphicsEffect(self._opacity_effect)
 
         # ── buttons ──
-        self._drink_btn = QPushButton(f"  Drink {self._drink_amount}ml  ", self)
-        self._dismiss_btn = QPushButton("  Dismiss  ", self)
+        self._drink_btn = QPushButton(f"  喝水 {self._drink_amount}ml  ", self)
+        self._dismiss_btn = QPushButton("  稍后再说  ", self)
 
-        self._drink_btn.setCursor(Qt.PointingHandCursor)
-        self._dismiss_btn.setCursor(Qt.PointingHandCursor)
+        self._drink_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._dismiss_btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self._drink_btn.clicked.connect(self._on_drink)
         self._dismiss_btn.clicked.connect(self._on_dismiss)
@@ -94,7 +94,7 @@ class ScreenShakeReminder(QWidget):
             anim.setDuration(single_duration)
             anim.setStartValue(0 if i == 0 else (-direction))
             anim.setEndValue(direction)
-            anim.setEasingCurve(QEasingCurve.InOutSine)
+            anim.setEasingCurve(QEasingCurve.Type.InOutSine)
             self._shake_group.addAnimation(anim)
 
         # settle back to 0
@@ -102,7 +102,7 @@ class ScreenShakeReminder(QWidget):
         settle.setDuration(120)
         settle.setStartValue(amplitude if cycles % 2 == 0 else -amplitude)
         settle.setEndValue(0)
-        settle.setEasingCurve(QEasingCurve.OutCubic)
+        settle.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._shake_group.addAnimation(settle)
 
         # ── auto-dismiss timer ──
@@ -113,7 +113,7 @@ class ScreenShakeReminder(QWidget):
         # ── fade out animation ──
         self._fade_anim = QPropertyAnimation(self._opacity_effect, b"opacity", self)
         self._fade_anim.setDuration(300)
-        self._fade_anim.setEasingCurve(QEasingCurve.InCubic)
+        self._fade_anim.setEasingCurve(QEasingCurve.Type.InCubic)
         self._fade_anim.finished.connect(self._on_fade_finished)
 
         # ── apply theme ──
@@ -195,13 +195,13 @@ class ScreenShakeReminder(QWidget):
     def paintEvent(self, event):
         del event
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         w = self.width()
         h = self.height()
 
         # Semi-transparent backdrop
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(self._overlay_bg)
         painter.drawRect(self.rect())
 
@@ -224,13 +224,13 @@ class ScreenShakeReminder(QWidget):
         painter.setFont(self._title_font)
         painter.setPen(self._title_color)
         title_rect = QRect(cx - 200, cy + 10, 400, 50)
-        painter.drawText(title_rect, Qt.AlignCenter, "Time to Drink Water!")
+        painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, "小范老师，该喝水啦~")
 
         # Subtitle
         painter.setFont(self._sub_font)
         painter.setPen(self._subtitle_color)
         sub_rect = QRect(cx - 200, cy + 60, 400, 30)
-        painter.drawText(sub_rect, Qt.AlignCenter, "Stay hydrated for better health")
+        painter.drawText(sub_rect, Qt.AlignmentFlag.AlignCenter, "喝口水休息一下，照顾好自己哦")
 
     def _get_drop_pixmap(self, scale: float = 2.5) -> QPixmap:
         """Return cached QPixmap of the water drop icon."""
@@ -245,10 +245,10 @@ class ScreenShakeReminder(QWidget):
 
         pixmap = QPixmap(pw_dev, ph_dev)
         pixmap.setDevicePixelRatio(dpr)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         # Paint in logical coordinates (pixmap handles DPR scaling)
         pw = int(40 * s)
@@ -271,7 +271,7 @@ class ScreenShakeReminder(QWidget):
         # highlight
         highlight = QPainterPath()
         highlight.addEllipse(QPoint(int(cx - 5 * s), int(cy - 4 * s)), int(5 * s), int(7 * s))
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(self._drop_highlight)
         painter.drawPath(highlight)
 

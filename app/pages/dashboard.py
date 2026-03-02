@@ -26,11 +26,17 @@ class DashboardPage(QWidget):
         self._layout.setSpacing(12)
         
         # 1. Greeting Label
-        self.lbl_greeting = QLabel("Welcome back! Stay hydrated \U0001f4a7")
+        self.lbl_greeting = QLabel(self._get_greeting())
         self.lbl_greeting.setStyleSheet(
             f"font-size: 22px; font-weight: bold; color: {ThemeManager.color('text_primary')}; padding: 4px 0;"
         )
         self._layout.addWidget(self.lbl_greeting)
+
+        self.lbl_sub_greeting = QLabel("今天也要记得多喝水哦~ 💧")
+        self.lbl_sub_greeting.setStyleSheet(
+            f"font-size: 14px; color: {ThemeManager.color('text_muted')}; padding: 0 0 4px 0;"
+        )
+        self._layout.addWidget(self.lbl_sub_greeting)
         
         self._layout.addSpacing(4)
         
@@ -66,7 +72,7 @@ class DashboardPage(QWidget):
         self._layout.addSpacing(8)
         
         # 4. Status Bar (Next reminder)
-        self.lbl_status = QLabel("Next reminder: --:--")
+        self.lbl_status = QLabel("下次提醒：--:--")
         self.lbl_status.setStyleSheet(
             f"color: {ThemeManager.color('text_muted')}; font-size: 14px;"
         )
@@ -75,7 +81,7 @@ class DashboardPage(QWidget):
         self._layout.addSpacing(8)
         
         # 5. Recent Activity Header
-        self.lbl_recent = QLabel("Recent Activity")
+        self.lbl_recent = QLabel("最近记录")
         self.lbl_recent.setStyleSheet(
             f"font-size: 18px; font-weight: 600; color: {ThemeManager.color('text_primary')};"
         )
@@ -102,7 +108,26 @@ class DashboardPage(QWidget):
         self.apply_theme()
         
     def update_progress(self, current_ml: int, goal_ml: int):
+        self.lbl_greeting.setText(self._get_greeting())
         self.circular_progress.set_value(current_ml, goal_ml)
+
+    @staticmethod
+    def _get_greeting() -> str:
+        import datetime
+        hour = datetime.datetime.now().hour
+        if 5 <= hour < 9:
+            greeting = "小范老师，早上好呀！"
+        elif 9 <= hour < 12:
+            greeting = "小范老师，上午好呀！"
+        elif 12 <= hour < 14:
+            greeting = "小范老师，中午好呀！"
+        elif 14 <= hour < 18:
+            greeting = "小范老师，下午好呀！"
+        elif 18 <= hour < 22:
+            greeting = "小范老师，晚上好呀！"
+        else:
+            greeting = "小范老师，夜深了！快去睡觉！"
+        return greeting
         
     def update_recent(self, records: list[dict[str, object]]):
         self._last_records = list(records)
@@ -203,9 +228,9 @@ class DashboardPage(QWidget):
         self._update_status_label()
         
     def _update_status_label(self):
-        text = f"Next reminder: {self._next_reminder_time}"
+        text = f"下次提醒：{self._next_reminder_time}"
         if self._paused:
-            text += " [Paused]"
+            text += " [已暂停]"
         self.lbl_status.setText(text)
 
     def _quick_add_button_stylesheet(self) -> str:
@@ -238,6 +263,9 @@ class DashboardPage(QWidget):
     def apply_theme(self, *_args):
         self.lbl_greeting.setStyleSheet(
             f"font-size: 24px; font-weight: bold; color: {ThemeManager.color('text_primary')};"
+        )
+        self.lbl_sub_greeting.setStyleSheet(
+            f"font-size: 14px; color: {ThemeManager.color('text_muted')}; padding: 0;"
         )
         self.lbl_status.setStyleSheet(
             f"color: {ThemeManager.color('text_muted')}; font-size: 14px;"

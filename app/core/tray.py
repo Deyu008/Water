@@ -19,17 +19,17 @@ class TrayManager(QObject):
 
         self._tray_icon = QSystemTrayIcon(self)
         self._tray_icon.setIcon(self._create_water_drop_icon())
-        self._tray_icon.setToolTip("Water Reminder")
+        self._tray_icon.setToolTip("小范老师的饮水站")
 
         self._menu = QMenu()  # no parent: QMenu requires QWidget, TrayManager is QObject
-        self._title_action = QAction("Water Reminder", self)
+        self._title_action = QAction("小范老师的饮水站", self)
         self._title_action.setEnabled(False)
 
-        self._show_window_action = QAction("Show Window", self)
-        self._pause_resume_action = QAction("Pause Reminders", self)
-        self._quit_action = QAction("Quit", self)
+        self._show_window_action = QAction("显示窗口", self)
+        self._pause_resume_action = QAction("暂停提醒", self)
+        self._quit_action = QAction("退出", self)
 
-        self._quick_drink_menu = QMenu("Quick Drink", self._menu)
+        self._quick_drink_menu = QMenu("快速喝水", self._menu)
         self._quick_drink_actions: dict[int, QAction] = {}
         for amount in (100, 200, 300, 500):
             action = QAction(f"{amount}ml", self)
@@ -59,7 +59,7 @@ class TrayManager(QObject):
 
     def set_reminder_paused(self, paused: bool):
         self._is_paused = paused
-        self._pause_resume_action.setText("Resume Reminders" if paused else "Pause Reminders")
+        self._pause_resume_action.setText("继续提醒" if paused else "暂停提醒")
 
     def show_notification(self, title: str, message: str):
         self._tray_icon.showMessage(
@@ -70,28 +70,65 @@ class TrayManager(QObject):
         )
 
     def _create_water_drop_icon(self) -> QIcon:
-        pixmap = QPixmap(64, 64)
+        """Create a high-quality water drop tray icon at 128px for HiDPI support."""
+        size = 128
+        pixmap = QPixmap(size, size)
         pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
+        # Circular background with soft gradient
+        from PySide6.QtGui import QRadialGradient
+        bg = QRadialGradient(size * 0.42, size * 0.38, size * 0.52)
+        bg.setColorAt(0.0, QColor("#82CCE6"))
+        bg.setColorAt(0.6, QColor("#6BB8D9"))
+        bg.setColorAt(1.0, QColor("#55A0C2"))
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#2196F3"))
-        painter.drawEllipse(2, 2, 60, 60)
+        painter.setBrush(bg)
+        m = size * 0.03  # margin
+        painter.drawEllipse(int(m), int(m), int(size - m * 2), int(size - m * 2))
+
+        # Classic water drop using bezier curves (scaled to size)
+        s = size / 64.0
+        cx, cy = size / 2.0, size / 2.0
+        tip_y = cy - 22 * s
+        center_y = cy + 2 * s
+        r = 12.5 * s
+        k = 0.5522847498 * r  # bezier circle constant
 
         drop_path = QPainterPath()
-        drop_path.moveTo(32, 14)
-        drop_path.cubicTo(21, 27, 18, 33, 18, 40)
-        drop_path.cubicTo(18, 48, 24, 54, 32, 54)
-        drop_path.cubicTo(40, 54, 46, 48, 46, 40)
-        drop_path.cubicTo(46, 33, 43, 27, 32, 14)
+        drop_path.moveTo(cx, tip_y)
+        # Left curve: tip -> leftmost point of circle
+        drop_path.cubicTo(
+            cx - 2 * s, tip_y + 8 * s,
+            cx - r - 1.5 * s, center_y - 4 * s,
+            cx - r, center_y,
+        )
+        # Bottom arc: left -> bottom center
+        drop_path.cubicTo(cx - r, center_y + k, cx - k, center_y + r, cx, center_y + r)
+        # Bottom arc: bottom center -> right
+        drop_path.cubicTo(cx + k, center_y + r, cx + r, center_y + k, cx + r, center_y)
+        # Right curve: rightmost -> tip (mirror of left)
+        drop_path.cubicTo(
+            cx + r + 1.5 * s, center_y - 4 * s,
+            cx + 2 * s, tip_y + 8 * s,
+            cx, tip_y,
+        )
         drop_path.closeSubpath()
 
-        painter.setBrush(QColor("#FFFFFF"))
+        painter.setBrush(QColor(255, 255, 255, 245))
         painter.drawPath(drop_path)
-        painter.end()
 
+        # Subtle specular highlight
+        highlight = QPainterPath()
+        from PySide6.QtCore import QPointF
+        highlight.addEllipse(QPointF(cx - 4 * s, cy - 1 * s), 3 * s, 5 * s)
+        painter.setBrush(QColor(255, 255, 255, 60))
+        painter.drawPath(highlight)
+
+        painter.end()
         return QIcon(pixmap)
 
     def _handle_pause_resume(self):

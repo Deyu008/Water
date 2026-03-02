@@ -16,8 +16,8 @@ class ToastReminder(QWidget):
 
         self._today_total_ml = max(0, int(today_total_ml))
         self._drink_amount = max(1, int(drink_amount))
-        self._title = "Time to Drink Water!"
-        self._message = f"Stay hydrated! You've had {self._today_total_ml}ml of water today."
+        self._title = "小范老师，该喝水啦~"
+        self._message = f"喝口水休息一下吧！今天已经喝了 {self._today_total_ml}ml 💧"
         self._margin = 20
         self._is_dismissing = False
 
@@ -36,8 +36,8 @@ class ToastReminder(QWidget):
         shadow.setColor(QColor(0, 0, 0, 120))
         self.setGraphicsEffect(shadow)
 
-        self._drink_btn = QPushButton(f"Drink {self._drink_amount}ml", self)
-        self._later_btn = QPushButton("Later", self)
+        self._drink_btn = QPushButton(f"喝水 {self._drink_amount}ml", self)
+        self._later_btn = QPushButton("稍后", self)
         self._drink_btn.clicked.connect(self._on_drink_clicked)
         self._later_btn.clicked.connect(self._dismiss)
 
@@ -234,8 +234,8 @@ class ToastReminder(QWidget):
         path.cubicTo(center.x() + 8, center.y() - 6, center.x() + 2, center.y() - 12, top.x(), top.y())
 
         gradient = QLinearGradient(top, bottom)
-        gradient.setColorAt(0.0, QColor(122, 214, 255, 255))
-        gradient.setColorAt(1.0, QColor(57, 154, 245, 255))
+        gradient.setColorAt(0.0, QColor(142, 210, 240, 255))
+        gradient.setColorAt(1.0, QColor(88, 166, 200, 255))
 
         painter.setPen(QPen(QColor(255, 255, 255, 140), 1))
         painter.setBrush(gradient)

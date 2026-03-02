@@ -7,10 +7,11 @@ import os
 import sys
 import types
 from pathlib import Path
+from typing import cast
 
 from PySide6.QtCore import Signal
-from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QApplication, QLabel, QWidget
+from PySide6.QtGui import QCloseEvent, QColor, QFont, QFontDatabase, QLinearGradient, QPainter, QPainterPath, QPixmap, QRadialGradient
+from PySide6.QtWidgets import QApplication, QLabel, QSplashScreen, QWidget
 
 from app.config import AppConfig
 from app.core.autostart import AutoStartManager
@@ -26,20 +27,21 @@ from app.widgets.screen_shake import ScreenShakeReminder
 logger = logging.getLogger(__name__)
 
 try:
-    from app.pages.dashboard import DashboardPage
+    from app.pages.dashboard import DashboardPage as _ImportedDashboardPage
 except Exception:
     logger.warning("Failed to import DashboardPage, using stub", exc_info=True)
+
     class DashboardPage(QWidget):
         water_added = Signal(int)
 
         def __init__(self, parent=None):
             super().__init__(parent)
-            self._label = QLabel("Dashboard page is not available yet.", self)
+            self._label = QLabel("饮水页暂不可用。", self)
 
         def update_progress(self, current_ml: int, goal_ml: int) -> None:
             del current_ml, goal_ml
 
-        def update_recent(self, records: list[dict]) -> None:
+        def update_recent(self, records: list[dict[str, int | str]]) -> None:
             del records
 
         def update_next_reminder(self, time_str: str) -> None:
@@ -47,30 +49,36 @@ except Exception:
 
         def set_reminder_paused(self, paused: bool) -> None:
             del paused
+else:
+    DashboardPage = cast("type[DashboardPage]", _ImportedDashboardPage)
 
 
 try:
-    from app.pages.history import HistoryPage
+    from app.pages.history import HistoryPage as _ImportedHistoryPage
 except Exception:
     logger.warning("Failed to import HistoryPage, using stub", exc_info=True)
+
     class HistoryPage(QWidget):
         period_changed = Signal(int)
 
         def __init__(self, parent=None):
             super().__init__(parent)
-            self._label = QLabel("History page is not available yet.", self)
+            self._label = QLabel("历史页暂不可用。", self)
 
-        def update_chart(self, daily_totals: list[dict], goal_ml: int) -> None:
+        def update_chart(self, daily_totals: list[dict[str, int | str]], goal_ml: int) -> None:
             del daily_totals, goal_ml
 
         def update_stats(self, avg_ml: int, best_ml: int, total_ml: int) -> None:
             del avg_ml, best_ml, total_ml
+else:
+    HistoryPage = cast("type[HistoryPage]", _ImportedHistoryPage)
 
 
 try:
-    from app.pages.settings import SettingsPage
+    from app.pages.settings import SettingsPage as _ImportedSettingsPage
 except Exception:
     logger.warning("Failed to import SettingsPage, using stub", exc_info=True)
+
     class SettingsPage(QWidget):
         interval_changed = Signal(int)
         goal_changed = Signal(int)
@@ -81,10 +89,12 @@ except Exception:
 
         def __init__(self, parent=None):
             super().__init__(parent)
-            self._label = QLabel("Settings page is not available yet.", self)
+            self._label = QLabel("设置页暂不可用。", self)
 
-        def load_settings(self, settings: dict) -> None:
+        def load_settings(self, settings: dict[str, object]) -> None:
             del settings
+else:
+    SettingsPage = cast("type[SettingsPage]", _ImportedSettingsPage)
 
 
 class WaterApp:
@@ -105,19 +115,23 @@ class WaterApp:
         self.tray: TrayManager | None = None
         self.toast: ToastReminder | None = None
         self._shake_overlay: ScreenShakeReminder | None = None
+        self._splash: QSplashScreen | None = None
 
     def run(self) -> int:
         self._prepare_runtime()
+        self._show_splash()
         self._create_core_objects()
         self._wire_signals()
         self._initial_load()
 
         if self.smoke_test:
+            self._close_splash()
             self.shutdown()
             print("SMOKE TEST PASSED")
             return 0
 
         self._start_runtime_services()
+        self._close_splash()
         assert self.app is not None
         return self.app.exec()
 
@@ -129,7 +143,84 @@ class WaterApp:
 
         self.config = AppConfig.load()
         ThemeManager.apply(self.app, self.config.theme)
+        self._setup_cjk_font()
         ThemeManager.connect_system_theme_watcher(self._on_system_theme_changed)
+
+    def _show_splash(self) -> None:
+        """Show a splash screen during app initialization."""
+        if self.app is None:
+            return
+
+        pixmap = QPixmap(380, 200)
+        pixmap.fill(QColor("#FFFFFF"))
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        # Background gradient
+        grad = QLinearGradient(0, 0, 380, 200)
+        grad.setColorAt(0.0, QColor("#EAF6FC"))
+        grad.setColorAt(1.0, QColor("#FFFFFF"))
+        painter.setBrush(grad)
+        painter.setPen(QColor("#D0E8F5"))
+        painter.drawRoundedRect(0, 0, 380, 200, 16, 16)
+
+        # Water drop icon
+        drop = QPainterPath()
+        cx, cy = 190.0, 65.0
+        drop.moveTo(cx, cy - 25)
+        drop.cubicTo(cx - 18, cy - 3, cx - 16, cy + 14, cx, cy + 25)
+        drop.cubicTo(cx + 16, cy + 14, cx + 18, cy - 3, cx, cy - 25)
+        drop.closeSubpath()
+        ig = QRadialGradient(cx - 5, cy - 8, 30)
+        ig.setColorAt(0.0, QColor("#8DD0EA"))
+        ig.setColorAt(1.0, QColor("#6BB8D9"))
+        painter.setPen(QColor(0, 0, 0, 0))
+        painter.setBrush(ig)
+        painter.drawPath(drop)
+
+        # Title text
+        title_font = QFont(self.app.font())
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        painter.setFont(title_font)
+        painter.setPen(QColor("#4A8CB5"))
+        from PySide6.QtCore import Qt, QRectF
+        painter.drawText(QRectF(0, 105, 380, 35), Qt.AlignmentFlag.AlignCenter, "\u5c0f\u8303\u8001\u5e08\u7684\u996e\u6c34\u7ad9")
+
+        # Loading text
+        sub_font = QFont(self.app.font())
+        sub_font.setPointSize(10)
+        painter.setFont(sub_font)
+        painter.setPen(QColor("#8EAABB"))
+        painter.drawText(QRectF(0, 145, 380, 25), Qt.AlignmentFlag.AlignCenter, "\u6b63\u5728\u542f\u52a8\uff0c\u8bf7\u7a0d\u5019...")
+
+        painter.end()
+
+        self._splash = QSplashScreen(pixmap)
+        self._splash.show()
+        self.app.processEvents()
+
+    def _close_splash(self) -> None:
+        """Close the splash screen."""
+        if self._splash is not None:
+            self._splash.close()
+            self._splash = None
+
+    def _setup_cjk_font(self) -> None:
+        families = ThemeManager.font_families()
+        available = set(QFontDatabase.families())
+        filtered = [f for f in families if f in available]
+        if not filtered:
+            filtered = families
+
+        font = QFont()
+        font.setFamilies(filtered)
+        font.setPointSize(9 if sys.platform == "win32" else 10)
+        font.setHintingPreference(QFont.HintingPreference.PreferNoHinting)
+
+        assert self.app is not None
+        self.app.setFont(font)
 
     def _create_core_objects(self) -> None:
         assert self.config is not None
@@ -229,7 +320,10 @@ class WaterApp:
 
         try:
             app_id = "WaterReminder.Desktop.App"
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+            windll = getattr(ctypes, "windll", None)
+            if windll is None:
+                return
+            windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
         except Exception:
             return
 
@@ -296,7 +390,7 @@ class WaterApp:
     def _on_tray_quick_drink(self, amount: int) -> None:
         self._add_intake_and_refresh(amount, "tray")
         assert self.tray is not None
-        self.tray.show_notification("Water Logged", f"Quick drink +{int(amount)}ml")
+        self.tray.show_notification("已记录", f"快速喝水 +{int(amount)}ml")
 
     def _add_intake_and_refresh(self, amount: int, source: str) -> None:
         if self.db is None:
@@ -445,7 +539,7 @@ class WaterApp:
 
             window.hide()
             if self.tray is not None:
-                self.tray.show_notification("Water Reminder", "App is still running in system tray.")
+                self.tray.show_notification("小范老师的饮水站", "程序在系统托盘继续运行哦~")
             event.ignore()
 
         self.main_window.closeEvent = types.MethodType(close_event, self.main_window)

@@ -26,7 +26,7 @@ class TitleBarButton(QPushButton):
                     border: none;
                     background: transparent;
                     color: {text_color};
-                    font-family: "Segoe UI", sans-serif;
+                    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", sans-serif;
                     font-size: 14px;
                 }}
                 QPushButton:hover {{
@@ -113,7 +113,7 @@ class TitleBar(QWidget):
         layout.addWidget(self.icon_label)
         
         # 2. Title
-        self.title_label = QLabel("Water Reminder")
+        self.title_label = QLabel("小范老师的饮水站")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.title_label)
         
@@ -148,7 +148,7 @@ class TitleBar(QWidget):
             "font-size: 16px; border: none; background: transparent;"
         )
         self.title_label.setStyleSheet(
-            f"font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; "
+            f"font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Segoe UI', system-ui, sans-serif; font-size: 13px; "
             f"font-weight: 600; color: {ThemeManager.color('titlebar_text')}; "
             "border: none; background: transparent;"
         )

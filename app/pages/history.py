@@ -66,7 +66,7 @@ class HistoryPage(QWidget):
         # 1. Header & Toggle
         header_layout = QHBoxLayout()
         
-        self.title_lbl = QLabel("Drinking History")
+        self.title_lbl = QLabel("饮水小账本")
         self.title_lbl.setStyleSheet(
             f"font-size: 24px; font-weight: bold; color: {ThemeManager.color('text_primary')};"
         )
@@ -82,8 +82,8 @@ class HistoryPage(QWidget):
         toggle_layout.setContentsMargins(2, 2, 2, 2)
         toggle_layout.setSpacing(0)
         
-        self.btn_7_days = self._create_toggle_btn("7 Days", 7)
-        self.btn_30_days = self._create_toggle_btn("30 Days", 30)
+        self.btn_7_days = self._create_toggle_btn("7天", 7)
+        self.btn_30_days = self._create_toggle_btn("30天", 30)
         
         toggle_layout.addWidget(self.btn_7_days)
         toggle_layout.addWidget(self.btn_30_days)
@@ -117,9 +117,9 @@ class HistoryPage(QWidget):
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(16)
         
-        self.card_avg = StatsCard("Average", "0 ml")
-        self.card_best = StatsCard("Best Day", "0 ml")
-        self.card_total = StatsCard("Total", "0 ml")
+        self.card_avg = StatsCard("日均", "0 ml")
+        self.card_best = StatsCard("最佳", "0 ml")
+        self.card_total = StatsCard("累计", "0 ml")
         
         stats_layout.addStretch()
         stats_layout.addWidget(self.card_avg)
@@ -186,13 +186,13 @@ class HistoryPage(QWidget):
     def _init_chart(self):
         # 1. Create Axes
         self.axis_x = QBarCategoryAxis()
-        self.axis_x.setLabelsFont(QFont("Segoe UI", 8))
+        self.axis_x.setLabelsFont(QFont(self.font().family(), 8))
         self.axis_x.setLabelsColor(ThemeManager.qcolor("chart_axis_text"))
         self.axis_x.setGridLineVisible(False)
         self.axis_x.setLinePen(QPen(Qt.PenStyle.NoPen))
         
         self.axis_y = QValueAxis()
-        self.axis_y.setLabelsFont(QFont("Segoe UI", 8))
+        self.axis_y.setLabelsFont(QFont(self.font().family(), 8))
         self.axis_y.setLabelsColor(ThemeManager.qcolor("chart_axis_text"))
         self.axis_y.setGridLineColor(ThemeManager.qcolor("chart_grid"))
         self.axis_y.setLinePen(QPen(Qt.PenStyle.NoPen))
@@ -207,7 +207,7 @@ class HistoryPage(QWidget):
         self.chart.addAxis(self.axis_y, Qt.AlignmentFlag.AlignLeft)
         
         # 2. Bar Series
-        self.bar_set = QBarSet("Water")
+        self.bar_set = QBarSet("饮水量")
         self.bar_set.setBorderColor(Qt.GlobalColor.transparent)
         
         # Gradient for bars

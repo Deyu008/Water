@@ -170,7 +170,7 @@ class SidebarButton(QPushButton):
         self._draw_icon(painter, icon_rect, is_selected)
         
         # Draw Text
-        font = QFont("Segoe UI", 10)
+        font = QFont(self.font().family(), 10)
         if is_selected:
             font.setBold(True)
         painter.setFont(font)
@@ -200,7 +200,7 @@ class Sidebar(QWidget):
         self._layout.setSpacing(8)
 
         # Branding
-        self.branding_label = QLabel("HydroTrack")
+        self.branding_label = QLabel("小范老师的饮水站")
         self.branding_label.setContentsMargins(20, 0, 0, 0)
         self._layout.addWidget(self.branding_label)
 
@@ -212,9 +212,9 @@ class Sidebar(QWidget):
         self.btn_group.idClicked.connect(self.page_changed.emit)
 
         # Buttons
-        self.btn_dashboard = SidebarButton("Dashboard", "water")
-        self.btn_history = SidebarButton("History", "chart")
-        self.btn_settings = SidebarButton("Settings", "gear")
+        self.btn_dashboard = SidebarButton("饮水台", "water")
+        self.btn_history = SidebarButton("小账本", "chart")
+        self.btn_settings = SidebarButton("设置", "gear")
         
         self._add_nav_button(self.btn_dashboard, 0)
         self._add_nav_button(self.btn_history, 1)
@@ -245,7 +245,7 @@ class Sidebar(QWidget):
             f"background-color: {ThemeManager.color('sidebar_bg')}; border-right: 1px solid {ThemeManager.color('sidebar_border')};"
         )
         self.branding_label.setStyleSheet(
-            f"font-family: 'Segoe UI', sans-serif; font-size: 18px; font-weight: 800; color: {ThemeManager.color('accent')};"
+            f"font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 800; color: {ThemeManager.color('accent')};"
         )
         self.version_label.setStyleSheet(
             f"color: {ThemeManager.color('sidebar_version')}; font-size: 10px;"

@@ -95,11 +95,11 @@ class CircularProgress(QWidget):
         self._track_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
 
         font_size = max(12, int(side * 0.16))
-        self._font_big = QFont("Segoe UI", font_size, QFont.Weight.Bold)
+        self._font_big = QFont(self.font().family(), font_size, QFont.Weight.Bold)
         self._fm_big_height = QFontMetrics(self._font_big).height()
 
         font_size_small = max(8, int(side * 0.06))
-        self._font_small = QFont("Segoe UI", font_size_small)
+        self._font_small = QFont(self.font().family(), font_size_small)
         self._fm_small_height = QFontMetrics(self._font_small).height()
 
         self._text_gap = max(4, int(side * 0.02))

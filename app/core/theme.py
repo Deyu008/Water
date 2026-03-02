@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import importlib
+from typing import Any
+
 from PySide6.QtCore import QObject, Signal, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QApplication
 
+apply_stylesheet: Any = None
 try:
-    from qt_material import apply_stylesheet
-except ImportError:
-    apply_stylesheet = None  # type: ignore[assignment]
+    qt_material = importlib.import_module("qt_material")
+    apply_stylesheet = getattr(qt_material, "apply_stylesheet", None)
+except Exception:
+    apply_stylesheet = None
 
 
 # ---------------------------------------------------------------------------
@@ -34,15 +39,15 @@ _LIGHT: dict[str, str] = {
     "text_disabled": "#9E9E9E",
     "text_on_accent": "#FFFFFF",
     # Accent
-    "accent": "#2196F3",
-    "accent_light": "#E3F2FD",
-    "accent_hover": "#1976D2",
-    "accent_pressed": "#1565C0",
+    "accent": "#6BB8D9",
+    "accent_light": "#E8F4FB",
+    "accent_hover": "#58A6C8",
+    "accent_pressed": "#4895B7",
     # Quick-add buttons (Dashboard)
-    "btn_pill_bg": "#E3F2FD",
-    "btn_pill_text": "#1976D2",
-    "btn_pill_hover": "#BBDEFB",
-    "btn_pill_pressed": "#90CAF9",
+    "btn_pill_bg": "#E8F4FB",
+    "btn_pill_text": "#58A6C8",
+    "btn_pill_hover": "#D1EAF5",
+    "btn_pill_pressed": "#BAE0EF",
     # Title bar
     "titlebar_bg": "#FAFAFA",
     "titlebar_border": "#E0E0E0",
@@ -56,37 +61,37 @@ _LIGHT: dict[str, str] = {
     "sidebar_bg": "#F5F5F5",
     "sidebar_border": "#E0E0E0",
     "sidebar_hover": "#1A000000",
-    "sidebar_selected": "#242196F3",
+    "sidebar_selected": "#246BB8D9",
     "sidebar_text": "#212121",
-    "sidebar_text_selected": "#2196F3",
+    "sidebar_text_selected": "#6BB8D9",
     "sidebar_icon_default": "#646464",
     "sidebar_version": "#999999",
     # Chart
-    "chart_bar_start": "#64B5F6",
-    "chart_bar_end": "#2196F3",
+    "chart_bar_start": "#9DD0E8",
+    "chart_bar_end": "#6BB8D9",
     "chart_grid": "#F0F0F0",
     "chart_goal": "#FF9800",
     "chart_axis_text": "#757575",
     # Progress ring
     "progress_track": "#F0F0F0",
-    "progress_start": "#2196F3",
-    "progress_end": "#64B5F6",
+    "progress_start": "#6BB8D9",
+    "progress_end": "#9DD0E8",
     "progress_text": "#212121",
     "progress_subtext": "#757575",
     # Toggle button (History page)
     "toggle_bg": "#E0E0E0",
     "toggle_checked_bg": "#FFFFFF",
     "toggle_text": "#616161",
-    "toggle_checked_text": "#2196F3",
+    "toggle_checked_text": "#6BB8D9",
     # Toast
     "toast_bg_start": "rgba(28, 47, 85, 225)",
     "toast_bg_end": "rgba(20, 30, 54, 225)",
     "toast_border": "rgba(255, 255, 255, 36)",
     "toast_title": "#F5FAFF",
     "toast_body": "rgba(219, 230, 246, 230)",
-    "toast_btn_bg": "rgba(58, 134, 255, 230)",
-    "toast_btn_hover": "rgba(70, 145, 255, 245)",
-    "toast_btn_pressed": "rgba(42, 116, 230, 255)",
+    "toast_btn_bg": "rgba(88, 166, 200, 230)",
+    "toast_btn_hover": "rgba(100, 178, 212, 245)",
+    "toast_btn_pressed": "rgba(72, 149, 183, 255)",
     "toast_later_bg": "rgba(255, 255, 255, 45)",
     "toast_later_text": "rgba(255, 255, 255, 220)",
     "toast_later_border": "rgba(255, 255, 255, 60)",
@@ -100,9 +105,9 @@ _LIGHT: dict[str, str] = {
     "shake_drop_end": "#FF399AF5",
     "shake_drop_outline": "#64FFFFFF",
     "shake_drop_highlight": "#5AFFFFFF",
-    "shake_btn_bg": "rgba(58, 134, 255, 230)",
-    "shake_btn_hover": "rgba(70, 145, 255, 245)",
-    "shake_btn_pressed": "rgba(42, 116, 230, 255)",
+    "shake_btn_bg": "rgba(88, 166, 200, 230)",
+    "shake_btn_hover": "rgba(100, 178, 212, 245)",
+    "shake_btn_pressed": "rgba(72, 149, 183, 255)",
     "shake_dismiss_bg": "rgba(255, 255, 255, 50)",
     "shake_dismiss_text": "rgba(255, 255, 255, 200)",
     "shake_dismiss_border": "rgba(255, 255, 255, 60)",
@@ -130,15 +135,15 @@ _DARK: dict[str, str] = {
     "text_disabled": "#5F6B7A",
     "text_on_accent": "#FFFFFF",
     # Accent
-    "accent": "#64B5F6",
-    "accent_light": "rgba(100, 181, 246, 0.15)",
-    "accent_hover": "#90CAF9",
-    "accent_pressed": "#42A5F5",
+    "accent": "#8ECAE6",
+    "accent_light": "rgba(142, 202, 230, 0.15)",
+    "accent_hover": "#A6D6EC",
+    "accent_pressed": "#76BEE0",
     # Quick-add buttons (Dashboard)
-    "btn_pill_bg": "rgba(100, 181, 246, 0.15)",
-    "btn_pill_text": "#90CAF9",
-    "btn_pill_hover": "rgba(100, 181, 246, 0.25)",
-    "btn_pill_pressed": "rgba(100, 181, 246, 0.35)",
+    "btn_pill_bg": "rgba(142, 202, 230, 0.15)",
+    "btn_pill_text": "#A6D6EC",
+    "btn_pill_hover": "rgba(142, 202, 230, 0.25)",
+    "btn_pill_pressed": "rgba(142, 202, 230, 0.35)",
     # Title bar
     "titlebar_bg": "#0E1420",
     "titlebar_border": "#2A3650",
@@ -152,37 +157,37 @@ _DARK: dict[str, str] = {
     "sidebar_bg": "#0E1420",
     "sidebar_border": "#2A3650",
     "sidebar_hover": "#0FFFFFFF",
-    "sidebar_selected": "#1F64B5F6",
+    "sidebar_selected": "#1F8ECAE6",
     "sidebar_text": "#E4E8EE",
-    "sidebar_text_selected": "#64B5F6",
+    "sidebar_text_selected": "#8ECAE6",
     "sidebar_icon_default": "#8E9AAF",
     "sidebar_version": "#5F6B7A",
     # Chart
-    "chart_bar_start": "#64B5F6",
-    "chart_bar_end": "#42A5F5",
+    "chart_bar_start": "#8ECAE6",
+    "chart_bar_end": "#76BEE0",
     "chart_grid": "#2A3650",
     "chart_goal": "#FFB74D",
     "chart_axis_text": "#8E9AAF",
     # Progress ring
     "progress_track": "#2A3650",
-    "progress_start": "#64B5F6",
-    "progress_end": "#90CAF9",
+    "progress_start": "#8ECAE6",
+    "progress_end": "#A6D6EC",
     "progress_text": "#E4E8EE",
     "progress_subtext": "#8E9AAF",
     # Toggle button (History page)
     "toggle_bg": "#2A3650",
     "toggle_checked_bg": "#1E283A",
     "toggle_text": "#8E9AAF",
-    "toggle_checked_text": "#64B5F6",
+    "toggle_checked_text": "#8ECAE6",
     # Toast
     "toast_bg_start": "rgba(18, 24, 38, 240)",
     "toast_bg_end": "rgba(14, 20, 32, 240)",
     "toast_border": "rgba(100, 181, 246, 0.15)",
     "toast_title": "#E4E8EE",
     "toast_body": "rgba(189, 193, 198, 230)",
-    "toast_btn_bg": "rgba(100, 181, 246, 0.8)",
-    "toast_btn_hover": "rgba(100, 181, 246, 0.9)",
-    "toast_btn_pressed": "rgba(66, 165, 245, 1.0)",
+    "toast_btn_bg": "rgba(142, 202, 230, 0.8)",
+    "toast_btn_hover": "rgba(142, 202, 230, 0.9)",
+    "toast_btn_pressed": "rgba(118, 190, 224, 1.0)",
     "toast_later_bg": "rgba(255, 255, 255, 0.08)",
     "toast_later_text": "rgba(228, 232, 238, 0.85)",
     "toast_later_border": "rgba(255, 255, 255, 0.12)",
@@ -196,9 +201,9 @@ _DARK: dict[str, str] = {
     "shake_drop_end": "#FF42A5F5",
     "shake_drop_outline": "#3CFFFFFF",
     "shake_drop_highlight": "#3CFFFFFF",
-    "shake_btn_bg": "rgba(100, 181, 246, 0.8)",
-    "shake_btn_hover": "rgba(100, 181, 246, 0.9)",
-    "shake_btn_pressed": "rgba(66, 165, 245, 1.0)",
+    "shake_btn_bg": "rgba(142, 202, 230, 0.8)",
+    "shake_btn_hover": "rgba(142, 202, 230, 0.9)",
+    "shake_btn_pressed": "rgba(118, 190, 224, 1.0)",
     "shake_dismiss_bg": "rgba(255, 255, 255, 0.08)",
     "shake_dismiss_text": "rgba(228, 232, 238, 0.85)",
     "shake_dismiss_border": "rgba(255, 255, 255, 0.12)",
@@ -257,7 +262,7 @@ class ThemeManager:
             "danger": "#dc3545",
             "warning": "#ffc107",
             "success": "#17a2b8",
-            "font_family": "Segoe UI, system-ui, sans-serif",
+            "font_family": "Microsoft YaHei UI, Microsoft YaHei, PingFang SC, Noto Sans CJK SC, Segoe UI, system-ui, sans-serif",
             "density_scale": "-1",
         }
 
@@ -305,6 +310,26 @@ class ThemeManager:
         """Get a QColor for a token."""
         return QColor(ThemeManager.color(token))
 
+    @staticmethod
+    def font_family() -> str:
+        """Return primary UI font family for current platform."""
+        import sys
+        if sys.platform == "win32":
+            return "Microsoft YaHei UI"
+        elif sys.platform == "darwin":
+            return "PingFang SC"
+        return "Noto Sans CJK SC"
+
+    @staticmethod
+    def font_families() -> list[str]:
+        """Return prioritized font family list for current platform."""
+        import sys
+        if sys.platform == "win32":
+            return ["Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "Segoe UI"]
+        elif sys.platform == "darwin":
+            return ["PingFang SC", "Hiragino Sans GB", "Helvetica Neue"]
+        return ["Noto Sans CJK SC", "Source Han Sans CN", "WenQuanYi Micro Hei", "DejaVu Sans"]
+
     # ------------------------------------------------------------------
     # System theme detection
     # ------------------------------------------------------------------
@@ -313,7 +338,7 @@ class ThemeManager:
     def _detect_system_theme() -> str:
         """Detect OS color scheme via QStyleHints (Qt 6.5+)."""
         app = QApplication.instance()
-        if app is None:
+        if not isinstance(app, QApplication):
             return "light"
 
         try:
@@ -335,7 +360,7 @@ class ThemeManager:
         callback signature: callback(theme_name: str) where theme_name is 'light'/'dark'.
         """
         app = QApplication.instance()
-        if app is None:
+        if not isinstance(app, QApplication):
             return False
 
         try:

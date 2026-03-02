@@ -23,10 +23,18 @@ class ThemeDropdownCombo(QComboBox):
         if popup is None:
             return
 
-        # Make popup window transparent so rounded corners are painted by the view,
-        # avoiding dark corner artifacts on some platforms.
-        popup.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        popup.setStyleSheet("background: transparent; border: none;")
+        bg_card = ThemeManager.color("bg_card")
+        border = ThemeManager.color("border")
+        hover = ThemeManager.color("bg_hover")
+        selected = ThemeManager.color("bg_selected")
+        text_primary = ThemeManager.color("text_primary")
+
+        # Keep popup opaque and draw rounded border on the popup itself;
+        # this avoids black artifacts around rounded corners on Windows.
+        popup.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        popup.setStyleSheet(
+            f"background-color: {bg_card}; border: 1px solid {border}; border-radius: 8px;"
+        )
         popup.setContentsMargins(0, 0, 0, 0)
 
         view.setFrameShape(QFrame.Shape.NoFrame)
@@ -34,18 +42,11 @@ class ThemeDropdownCombo(QComboBox):
         view.setContentsMargins(0, 0, 0, 0)
         view.viewport().setAutoFillBackground(False)
 
-        bg_card = ThemeManager.color("bg_card")
-        border = ThemeManager.color("border")
-        hover = ThemeManager.color("bg_hover")
-        selected = ThemeManager.color("bg_selected")
-        text_primary = ThemeManager.color("text_primary")
-
         view.setStyleSheet(
             f"""
             QListView {{
-                background-color: {bg_card};
-                border: 1px solid {border};
-                border-radius: 8px;
+                background: transparent;
+                border: none;
                 outline: none;
                 padding: 4px;
                 color: {text_primary};
@@ -110,7 +111,7 @@ class SettingsPage(QWidget):
         self.content_layout.setSpacing(16)
 
         # Title
-        self.title_label = QLabel("Settings")
+        self.title_label = QLabel("设置")
         self.content_layout.addWidget(self.title_label)
 
         # --- Sections ---
@@ -145,10 +146,10 @@ class SettingsPage(QWidget):
         return layout
 
     def _init_reminder_section(self):
-        layout = self._create_section("Reminder Settings")
+        layout = self._create_section("提醒设置")
 
         row = QHBoxLayout()
-        lbl = QLabel("Interval (minutes)")
+        lbl = QLabel("提醒间隔（分钟）")
         self._muted_labels.append(lbl)
 
         self.interval_slider = QSlider(Qt.Orientation.Horizontal)
@@ -162,8 +163,8 @@ class SettingsPage(QWidget):
         self.interval_spin = QSpinBox()
         self.interval_spin.setRange(15, 120)
         self.interval_spin.setSingleStep(5)
-        self.interval_spin.setSuffix(" min")
-        self.interval_spin.setFixedWidth(80)
+        self.interval_spin.setSuffix(" 分钟")
+        self.interval_spin.setFixedWidth(104)
 
         # Sync
         self.interval_slider.valueChanged.connect(self.interval_spin.setValue)
@@ -178,10 +179,10 @@ class SettingsPage(QWidget):
         layout.addWidget(self.interval_slider)
 
     def _init_goal_section(self):
-        layout = self._create_section("Daily Goal")
+        layout = self._create_section("每日目标")
 
         row = QHBoxLayout()
-        lbl = QLabel("Target (ml)")
+        lbl = QLabel("目标量（毫升）")
         self._muted_labels.append(lbl)
 
         self.goal_slider = QSlider(Qt.Orientation.Horizontal)
@@ -196,7 +197,7 @@ class SettingsPage(QWidget):
         self.goal_spin.setRange(500, 5000)
         self.goal_spin.setSingleStep(100)
         self.goal_spin.setSuffix(" ml")
-        self.goal_spin.setFixedWidth(80)
+        self.goal_spin.setFixedWidth(104)
 
         # Sync
         self.goal_slider.valueChanged.connect(self.goal_spin.setValue)
@@ -211,13 +212,13 @@ class SettingsPage(QWidget):
         layout.addWidget(self.goal_slider)
 
     def _init_appearance_section(self):
-        layout = self._create_section("Appearance")
+        layout = self._create_section("外观")
 
         row = QHBoxLayout()
-        self.theme_label = QLabel("Theme")
+        self.theme_label = QLabel("主题")
 
         self.theme_combo = ThemeDropdownCombo()
-        self.theme_combo.addItems(["Light", "Dark", "Auto (System)"])
+        self.theme_combo.addItems(["浅色", "深色", "跟随系统"])
         self.theme_combo.setFixedWidth(140)
         self.theme_combo.currentTextChanged.connect(self._on_theme_combo_changed)
 
@@ -227,9 +228,9 @@ class SettingsPage(QWidget):
         layout.addLayout(row)
 
     def _init_notifications_section(self):
-        layout = self._create_section("Notifications")
+        layout = self._create_section("通知")
 
-        self.sound_check = QCheckBox("Enable Sound")
+        self.sound_check = QCheckBox("开启提示音")
         self.sound_check.setStyleSheet(
             f"QCheckBox {{ color: {ThemeManager.color('text_muted')}; border: none; }}"
         )
@@ -237,7 +238,7 @@ class SettingsPage(QWidget):
         self._checkboxes.append(self.sound_check)
         layout.addWidget(self.sound_check)
 
-        self.shake_check = QCheckBox("Screen shake reminder")
+        self.shake_check = QCheckBox("屏幕震动提醒")
         self.shake_check.setStyleSheet(
             f"QCheckBox {{ color: {ThemeManager.color('text_muted')}; border: none; }}"
         )
@@ -246,9 +247,9 @@ class SettingsPage(QWidget):
         layout.addWidget(self.shake_check)
 
     def _init_system_section(self):
-        layout = self._create_section("System")
+        layout = self._create_section("系统")
 
-        self.autostart_check = QCheckBox("Auto-start on boot")
+        self.autostart_check = QCheckBox("开机自启动")
         self.autostart_check.setStyleSheet(
             f"QCheckBox {{ color: {ThemeManager.color('text_muted')}; border: none; }}"
         )
@@ -257,16 +258,16 @@ class SettingsPage(QWidget):
         layout.addWidget(self.autostart_check)
 
     def _init_about_section(self):
-        layout = self._create_section("About")
+        layout = self._create_section("关于")
 
-        self.about_title_label = QLabel("Water Reminder v1.0")
+        self.about_title_label = QLabel("小范老师的饮水站 v1.0")
         layout.addWidget(self.about_title_label)
 
-        self.about_desc_label = QLabel("Made with 💧 and Python (PySide6)")
+        self.about_desc_label = QLabel("用 💧 和爱心为小范老师打造")
         layout.addWidget(self.about_desc_label)
 
     def _on_theme_combo_changed(self, text):
-        mapping = {"Light": "light", "Dark": "dark", "Auto (System)": "auto"}
+        mapping = {"浅色": "light", "深色": "dark", "跟随系统": "auto"}
         self.theme_changed.emit(mapping.get(text, "light"))
 
     def apply_theme(self, *_args):
@@ -417,8 +418,8 @@ class SettingsPage(QWidget):
             if "theme" in config:
                 raw_theme = config["theme"]
                 if isinstance(raw_theme, str):
-                    mapping = {"light": "Light", "dark": "Dark", "auto": "Auto (System)"}
-                    display = mapping.get(raw_theme, "Light")
+                    mapping = {"light": "浅色", "dark": "深色", "auto": "跟随系统"}
+                    display = mapping.get(raw_theme, "浅色")
                     idx = self.theme_combo.findText(display)
                     if idx >= 0:
                         self.theme_combo.setCurrentIndex(idx)
