@@ -1,8 +1,74 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel,
-                               QScrollArea, QSlider, QSpinBox, QVBoxLayout, QWidget)
+                               QListView, QScrollArea, QSlider, QSpinBox, QVBoxLayout, QWidget)
 
 from app.core.theme import ThemeManager
+
+
+class ThemeDropdownCombo(QComboBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setView(QListView(self))
+
+    def showPopup(self):
+        self._configure_popup_view()
+        super().showPopup()
+
+    def apply_popup_theme(self):
+        self._configure_popup_view()
+
+    def _configure_popup_view(self):
+        view = self.view()
+        popup = view.window()
+        if popup is None:
+            return
+
+        # Make popup window transparent so rounded corners are painted by the view,
+        # avoiding dark corner artifacts on some platforms.
+        popup.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        popup.setStyleSheet("background: transparent; border: none;")
+        popup.setContentsMargins(0, 0, 0, 0)
+
+        view.setFrameShape(QFrame.Shape.NoFrame)
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        view.setContentsMargins(0, 0, 0, 0)
+        view.viewport().setAutoFillBackground(False)
+
+        bg_card = ThemeManager.color("bg_card")
+        border = ThemeManager.color("border")
+        hover = ThemeManager.color("bg_hover")
+        selected = ThemeManager.color("bg_selected")
+        text_primary = ThemeManager.color("text_primary")
+
+        view.setStyleSheet(
+            f"""
+            QListView {{
+                background-color: {bg_card};
+                border: 1px solid {border};
+                border-radius: 8px;
+                outline: none;
+                padding: 4px;
+                color: {text_primary};
+            }}
+            QListView::viewport {{
+                background: transparent;
+                border: none;
+            }}
+            QListView::item {{
+                color: {text_primary};
+                padding: 6px 12px;
+                margin: 1px 0;
+                border-radius: 6px;
+            }}
+            QListView::item:hover {{
+                background-color: {hover};
+            }}
+            QListView::item:selected {{
+                background-color: {selected};
+                color: {text_primary};
+            }}
+            """
+        )
 
 
 class SettingsPage(QWidget):
@@ -25,6 +91,7 @@ class SettingsPage(QWidget):
         self._section_title_labels: list[QLabel] = []
         self._muted_labels: list[QLabel] = []
         self._checkboxes: list[QCheckBox] = []
+        self._sliders: list[QSlider] = []
 
         # Main Layout
         main_layout = QVBoxLayout(self)
@@ -87,8 +154,10 @@ class SettingsPage(QWidget):
         self.interval_slider = QSlider(Qt.Orientation.Horizontal)
         self.interval_slider.setRange(15, 120)
         self.interval_slider.setSingleStep(5)
-        self.interval_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.interval_slider.setTickPosition(QSlider.TickPosition.NoTicks)
         self.interval_slider.setTickInterval(15)
+        self.interval_slider.setMinimumHeight(32)
+        self._sliders.append(self.interval_slider)
 
         self.interval_spin = QSpinBox()
         self.interval_spin.setRange(15, 120)
@@ -118,8 +187,10 @@ class SettingsPage(QWidget):
         self.goal_slider = QSlider(Qt.Orientation.Horizontal)
         self.goal_slider.setRange(500, 5000)
         self.goal_slider.setSingleStep(100)
-        self.goal_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.goal_slider.setTickPosition(QSlider.TickPosition.NoTicks)
         self.goal_slider.setTickInterval(500)
+        self.goal_slider.setMinimumHeight(32)
+        self._sliders.append(self.goal_slider)
 
         self.goal_spin = QSpinBox()
         self.goal_spin.setRange(500, 5000)
@@ -143,15 +214,14 @@ class SettingsPage(QWidget):
         layout = self._create_section("Appearance")
 
         row = QHBoxLayout()
-        lbl = QLabel("Theme")
-        self._muted_labels.append(lbl)
+        self.theme_label = QLabel("Theme")
 
-        self.theme_combo = QComboBox()
+        self.theme_combo = ThemeDropdownCombo()
         self.theme_combo.addItems(["Light", "Dark", "Auto (System)"])
         self.theme_combo.setFixedWidth(140)
         self.theme_combo.currentTextChanged.connect(self._on_theme_combo_changed)
 
-        row.addWidget(lbl)
+        row.addWidget(self.theme_label)
         row.addStretch()
         row.addWidget(self.theme_combo)
         layout.addLayout(row)
@@ -207,6 +277,10 @@ class SettingsPage(QWidget):
         text_secondary = ThemeManager.color("text_secondary")
         text_muted = ThemeManager.color("text_muted")
         accent = ThemeManager.color("accent")
+        accent_hover = ThemeManager.color("accent_hover")
+        accent_light = ThemeManager.color("accent_light")
+        bg_input = ThemeManager.color("bg_input")
+        border_light = ThemeManager.color("border_light")
 
         self.content_widget.setStyleSheet(f"background-color: {bg_primary};")
         self.title_label.setStyleSheet(
@@ -232,11 +306,84 @@ class SettingsPage(QWidget):
         for label in self._muted_labels:
             label.setStyleSheet(f"border: none; color: {text_muted};")
 
+        self.theme_label.setStyleSheet(
+            f"font-size: 14px; font-weight: 600; color: {text_secondary}; border: none;"
+        )
+
         for checkbox in self._checkboxes:
             checkbox.setStyleSheet(f"QCheckBox {{ color: {text_muted}; border: none; }}")
 
         self.about_title_label.setStyleSheet(f"border: none; font-weight: bold; color: {accent};")
         self.about_desc_label.setStyleSheet(f"border: none; color: {text_muted};")
+
+        self.theme_combo.setStyleSheet(
+            f"""
+            QComboBox {{
+                background-color: {bg_input};
+                color: {text_primary};
+                border: 1px solid {border};
+                border-radius: 8px;
+                padding: 4px 28px 4px 10px;
+                font-weight: 500;
+            }}
+            QComboBox:on, QComboBox:editable, QComboBox:enabled {{
+                color: {text_primary};
+                background-color: {bg_input};
+            }}
+            QComboBox:hover {{
+                border-color: {accent};
+            }}
+            QComboBox:focus {{
+                border-color: {accent_hover};
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border: none;
+                background: transparent;
+            }}
+            """
+        )
+
+        slider_style = f"""
+            QSlider {{
+                min-height: 32px;
+                max-height: 32px;
+            }}
+            QSlider::groove:horizontal {{
+                background-color: {border};
+                height: 4px;
+                border-radius: 2px;
+                margin: 14px 0;
+            }}
+            QSlider::sub-page:horizontal {{
+                background-color: {accent};
+                border-radius: 2px;
+                margin: 14px 0;
+            }}
+            QSlider::add-page:horizontal {{
+                background-color: {border_light};
+                border-radius: 2px;
+                margin: 14px 0;
+            }}
+            QSlider::handle:horizontal {{
+                background-color: {bg_card};
+                width: 14px;
+                height: 14px;
+                margin: -5px 0 -5px 0;
+                border-radius: 7px;
+                border: 2px solid {accent};
+            }}
+            QSlider::handle:horizontal:hover {{
+                background-color: {accent_light};
+                border-color: {accent_hover};
+            }}
+        """
+        for slider in self._sliders:
+            slider.setStyleSheet(slider_style)
+
+        self.theme_combo.apply_popup_theme()
 
     def load_settings(self, config: dict[str, object]):
         widgets = [

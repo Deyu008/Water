@@ -55,8 +55,8 @@ _LIGHT: dict[str, str] = {
     # Sidebar
     "sidebar_bg": "#F5F5F5",
     "sidebar_border": "#E0E0E0",
-    "sidebar_hover": "rgba(0, 0, 0, 0.06)",
-    "sidebar_selected": "rgba(33, 150, 243, 0.10)",
+    "sidebar_hover": "#1A000000",
+    "sidebar_selected": "#242196F3",
     "sidebar_text": "#212121",
     "sidebar_text_selected": "#2196F3",
     "sidebar_icon_default": "#646464",
@@ -92,6 +92,22 @@ _LIGHT: dict[str, str] = {
     "toast_later_border": "rgba(255, 255, 255, 60)",
     "toast_later_hover": "rgba(255, 255, 255, 70)",
     "toast_later_pressed": "rgba(255, 255, 255, 85)",
+    # Shake overlay (qcolor tokens use #AARRGGBB for reliable QColor parsing)
+    "shake_overlay_bg": "#8C000000",
+    "shake_title": "#F0FFFFFF",
+    "shake_subtitle": "#B4C8DCFF",
+    "shake_drop_start": "#FF7AD6FF",
+    "shake_drop_end": "#FF399AF5",
+    "shake_drop_outline": "#64FFFFFF",
+    "shake_drop_highlight": "#5AFFFFFF",
+    "shake_btn_bg": "rgba(58, 134, 255, 230)",
+    "shake_btn_hover": "rgba(70, 145, 255, 245)",
+    "shake_btn_pressed": "rgba(42, 116, 230, 255)",
+    "shake_dismiss_bg": "rgba(255, 255, 255, 50)",
+    "shake_dismiss_text": "rgba(255, 255, 255, 200)",
+    "shake_dismiss_border": "rgba(255, 255, 255, 60)",
+    "shake_dismiss_hover": "rgba(255, 255, 255, 80)",
+    "shake_dismiss_pressed": "rgba(255, 255, 255, 100)",
 }
 
 _DARK: dict[str, str] = {
@@ -135,8 +151,8 @@ _DARK: dict[str, str] = {
     # Sidebar
     "sidebar_bg": "#0E1420",
     "sidebar_border": "#2A3650",
-    "sidebar_hover": "rgba(255, 255, 255, 0.06)",
-    "sidebar_selected": "rgba(100, 181, 246, 0.12)",
+    "sidebar_hover": "#0FFFFFFF",
+    "sidebar_selected": "#1F64B5F6",
     "sidebar_text": "#E4E8EE",
     "sidebar_text_selected": "#64B5F6",
     "sidebar_icon_default": "#8E9AAF",
@@ -172,6 +188,22 @@ _DARK: dict[str, str] = {
     "toast_later_border": "rgba(255, 255, 255, 0.12)",
     "toast_later_hover": "rgba(255, 255, 255, 0.14)",
     "toast_later_pressed": "rgba(255, 255, 255, 0.18)",
+    # Shake overlay (qcolor tokens use #AARRGGBB for reliable QColor parsing)
+    "shake_overlay_bg": "#B4000000",
+    "shake_title": "#F5E4E8EE",
+    "shake_subtitle": "#C88E9AAF",
+    "shake_drop_start": "#FF64B5F6",
+    "shake_drop_end": "#FF42A5F5",
+    "shake_drop_outline": "#3CFFFFFF",
+    "shake_drop_highlight": "#3CFFFFFF",
+    "shake_btn_bg": "rgba(100, 181, 246, 0.8)",
+    "shake_btn_hover": "rgba(100, 181, 246, 0.9)",
+    "shake_btn_pressed": "rgba(66, 165, 245, 1.0)",
+    "shake_dismiss_bg": "rgba(255, 255, 255, 0.08)",
+    "shake_dismiss_text": "rgba(228, 232, 238, 0.85)",
+    "shake_dismiss_border": "rgba(255, 255, 255, 0.12)",
+    "shake_dismiss_hover": "rgba(255, 255, 255, 0.14)",
+    "shake_dismiss_pressed": "rgba(255, 255, 255, 0.18)",
 }
 
 
@@ -346,6 +378,10 @@ class ThemeManager:
     @staticmethod
     def _build_overrides() -> str:
         c = ThemeManager.colors()
+
+        def t(token: str) -> str:
+            return c.get(token, "#FF00FF")
+
         return f"""
 /* === Water Reminder Theme Overrides === */
 
@@ -356,30 +392,30 @@ QMainWindow {{
 
 /* --- Container --- */
 QWidget#Container {{
-    background-color: {c["bg_primary"]};
-    border: 1px solid {c["border"]};
+    background-color: {t("bg_primary")};
+    border: 1px solid {t("border")};
     border-radius: 10px;
 }}
 
 QWidget#ContainerMaximized {{
-    background-color: {c["bg_primary"]};
+    background-color: {t("bg_primary")};
     border: none;
     border-radius: 0px;
 }}
 
 /* --- Sidebar --- */
 QWidget[objectName="Sidebar"], QWidget#Sidebar {{
-    background-color: {c["sidebar_bg"]};
-    border-right: 1px solid {c["sidebar_border"]};
+    background-color: {t("sidebar_bg")};
+    border-right: 1px solid {t("sidebar_border")};
 }}
 
 /* --- Pages --- */
 QWidget#historyPage {{
-    background-color: {c["bg_primary"]};
+    background-color: {t("bg_primary")};
 }}
 
 QWidget#settingsPage {{
-    background-color: {c["bg_primary"]};
+    background-color: {t("bg_primary")};
 }}
 
 /* --- Charts --- */
@@ -390,12 +426,12 @@ QChartView {{
 
 /* --- Frames (cards) --- */
 QFrame {{
-    border-color: {c["border"]};
+    border-color: {t("border")};
 }}
 
 /* --- Labels --- */
 QLabel {{
-    selection-background-color: {c["accent"]};
+    selection-background-color: {t("accent")};
 }}
 
 /* --- ScrollArea --- */
@@ -411,13 +447,13 @@ QScrollBar:vertical {{
 }}
 
 QScrollBar::handle:vertical {{
-    background: {c["border"]};
+    background: {t("border")};
     border-radius: 4px;
     min-height: 30px;
 }}
 
 QScrollBar::handle:vertical:hover {{
-    background: {c["text_muted"]};
+    background: {t("text_muted")};
 }}
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
@@ -431,7 +467,7 @@ QScrollBar:horizontal {{
 }}
 
 QScrollBar::handle:horizontal {{
-    background: {c["border"]};
+    background: {t("border")};
     border-radius: 4px;
     min-width: 30px;
 }}
@@ -442,16 +478,16 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
 
 /* --- Reusable tokens --- */
 QWidget[role="chart-card"] {{
-    background: {c["bg_card"]};
-    border: 1px solid {c["border"]};
+    background: {t("bg_card")};
+    border: 1px solid {t("border")};
     border-radius: 12px;
 }}
 
 QLabel[role="muted"] {{
-    color: {c["text_muted"]};
+    color: {t("text_muted")};
 }}
 
 QWidget[role="chart-grid"] {{
-    color: {c["chart_grid"]};
+    color: {t("chart_grid")};
 }}
 """

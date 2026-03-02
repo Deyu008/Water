@@ -1,7 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('Z:\\data\\yangdeyu\\water\\app\\resources', 'app/resources')]
+PROJECT_ROOT = Path(globals().get('SPECPATH', '.')).resolve()
+ICON_PATH = str(PROJECT_ROOT / 'app' / 'resources' / 'icons' / 'water_drop_tray.ico')
+
+datas = [(str(PROJECT_ROOT / 'app' / 'resources'), 'app/resources')]
 binaries = []
 hiddenimports = ['PySide6.QtCharts', 'PySide6.QtMultimedia']
 tmp_ret = collect_all('qt_material')
@@ -9,8 +14,8 @@ datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
-    ['Z:\\data\\yangdeyu\\water\\main.py'],
-    pathex=[],
+    [str(PROJECT_ROOT / 'main.py')],
+    pathex=[str(PROJECT_ROOT)],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -39,6 +44,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=ICON_PATH,
 )
 coll = COLLECT(
     exe,

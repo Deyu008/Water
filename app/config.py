@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import cast
@@ -63,7 +65,21 @@ class AppConfig:
     def save(self) -> None:
         path = self.get_config_path()
         _ = path.parent.mkdir(parents=True, exist_ok=True)
-        _ = path.write_text(json.dumps(asdict(self), ensure_ascii=False, indent=2), encoding="utf-8")
+        data = json.dumps(asdict(self), ensure_ascii=False, indent=2).encode("utf-8")
+        # Atomic write: write to temp file then os.replace()
+        fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+        try:
+            with os.fdopen(fd, 'wb') as f:
+                f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, str(path))
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
 
 def _to_int(value: object, default: int) -> int:

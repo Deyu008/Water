@@ -22,17 +22,17 @@ class DashboardPage(QWidget):
         
         # Main Layout
         self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(40, 40, 40, 40)
-        self._layout.setSpacing(20)
+        self._layout.setContentsMargins(24, 20, 24, 16)
+        self._layout.setSpacing(12)
         
         # 1. Greeting Label
-        self.lbl_greeting = QLabel("Welcome back! Stay hydrated 💧")
+        self.lbl_greeting = QLabel("Welcome back! Stay hydrated \U0001f4a7")
         self.lbl_greeting.setStyleSheet(
-            f"font-size: 24px; font-weight: bold; color: {ThemeManager.color('text_primary')};"
+            f"font-size: 22px; font-weight: bold; color: {ThemeManager.color('text_primary')}; padding: 4px 0;"
         )
         self._layout.addWidget(self.lbl_greeting)
         
-        self._layout.addSpacing(10)
+        self._layout.addSpacing(4)
         
         # 2. Circular Progress (Centered)
         progress_container = QWidget()
@@ -44,7 +44,7 @@ class DashboardPage(QWidget):
         
         self._layout.addWidget(progress_container, alignment=Qt.AlignmentFlag.AlignCenter)
         
-        self._layout.addSpacing(20)
+        self._layout.addSpacing(8)
         
         # 3. Quick Add Buttons
         # Use a grid or horizontal layout
@@ -63,7 +63,7 @@ class DashboardPage(QWidget):
             
         self._layout.addLayout(btn_layout)
         
-        self._layout.addSpacing(20)
+        self._layout.addSpacing(8)
         
         # 4. Status Bar (Next reminder)
         self.lbl_status = QLabel("Next reminder: --:--")
@@ -72,7 +72,7 @@ class DashboardPage(QWidget):
         )
         self._layout.addWidget(self.lbl_status, alignment=Qt.AlignmentFlag.AlignCenter)
         
-        self._layout.addSpacing(20)
+        self._layout.addSpacing(8)
         
         # 5. Recent Activity Header
         self.lbl_recent = QLabel("Recent Activity")
@@ -91,7 +91,7 @@ class DashboardPage(QWidget):
         self.recent_container = QWidget()
         self.recent_container.setStyleSheet("background: transparent;")
         self.recent_layout = QVBoxLayout(self.recent_container)
-        self.recent_layout.setContentsMargins(0, 0, 0, 0)
+        self.recent_layout.setContentsMargins(4, 4, 4, 4)
         self.recent_layout.setSpacing(10)
         self.recent_layout.addStretch() # Push items to top
         
@@ -106,61 +106,93 @@ class DashboardPage(QWidget):
         
     def update_recent(self, records: list[dict[str, object]]):
         self._last_records = list(records)
+        num_records = len(self._last_records)
 
-        while self.recent_layout.count():
-            item = self.recent_layout.takeAt(0)
-            w = item.widget()
-            if w is not None:
-                w.deleteLater()
-        
-        # Add new items
-        for record in self._last_records:
-            # record: {'id': 1, 'time': '14:00', 'amount_ml': 200, 'source': 'button'}
-            item_widget = QWidget()
-            item_widget.setStyleSheet(f"""
-                QWidget {{
-                    background-color: {ThemeManager.color('bg_card')};
-                    border-radius: 10px;
-                    border: 1px solid {ThemeManager.color('border_light')};
-                }}
-            """)
-            item_widget.setFixedHeight(50)
-            
-            row = QHBoxLayout(item_widget)
-            row.setContentsMargins(15, 0, 15, 0)
-            
-            # Time
+        # Reuse existing item widgets; create new ones only if needed
+        # Count existing widgets (exclude the trailing stretch)
+        existing_count = 0
+        for i in range(self.recent_layout.count()):
+            if self.recent_layout.itemAt(i).widget() is not None:
+                existing_count += 1
+
+        # Remove excess widgets
+        while existing_count > num_records:
+            for i in range(self.recent_layout.count() - 1, -1, -1):
+                item = self.recent_layout.itemAt(i)
+                if item.widget() is not None:
+                    w = item.widget()
+                    self.recent_layout.removeWidget(w)
+                    w.deleteLater()
+                    existing_count -= 1
+                    break
+
+        # Remove trailing stretch (we'll re-add it at the end)
+        while self.recent_layout.count() > 0:
+            item = self.recent_layout.itemAt(self.recent_layout.count() - 1)
+            if item.widget() is None and item.layout() is None:
+                self.recent_layout.takeAt(self.recent_layout.count() - 1)
+            else:
+                break
+
+        # Update existing / create new widgets
+        for idx, record in enumerate(self._last_records):
             time_text = str(record.get('time', '--:--'))
-            lbl_time = QLabel(time_text)
-            lbl_time.setStyleSheet(
-                f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none;"
-            )
-            row.addWidget(lbl_time)
-            
-            row.addStretch()
-            
-            # Source Icon/Text
-            source = str(record.get('source', 'button'))
-            source_text = "🔘" if source == 'button' else "🔔"
-            lbl_source = QLabel(source_text)
-            lbl_source.setStyleSheet("font-size: 12px; border: none;")
-            # row.addWidget(lbl_source) # Optional
-            
-            # Amount
             raw_amount = record.get('amount_ml', 0)
             try:
                 amount_ml = int(str(raw_amount))
             except (TypeError, ValueError):
                 amount_ml = 0
-            lbl_amount = QLabel(f"+{amount_ml} ml")
+
+            if idx < existing_count:
+                # Reuse existing widget
+                item_widget = self.recent_layout.itemAt(idx).widget()
+                if item_widget is not None:
+                    self._update_recent_item(item_widget, time_text, amount_ml)
+            else:
+                # Create new widget
+                item_widget = self._create_recent_item(time_text, amount_ml)
+                self.recent_layout.addWidget(item_widget)
+
+        self.recent_layout.addStretch()
+
+    def _create_recent_item(self, time_text: str, amount_ml: int) -> QWidget:
+        item_widget = QWidget()
+        item_widget.setStyleSheet(self._recent_item_stylesheet())
+        item_widget.setFixedHeight(50)
+
+        row = QHBoxLayout(item_widget)
+        row.setContentsMargins(15, 0, 15, 0)
+
+        lbl_time = QLabel(time_text)
+        lbl_time.setObjectName("recent_time")
+        lbl_time.setStyleSheet(
+            f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none;"
+        )
+        row.addWidget(lbl_time)
+        row.addStretch()
+
+        lbl_amount = QLabel(f"+{amount_ml} ml")
+        lbl_amount.setObjectName("recent_amount")
+        lbl_amount.setStyleSheet(
+            f"color: {ThemeManager.color('accent')}; font-weight: bold; font-size: 14px; border: none;"
+        )
+        row.addWidget(lbl_amount)
+        return item_widget
+
+    def _update_recent_item(self, item_widget: QWidget, time_text: str, amount_ml: int):
+        item_widget.setStyleSheet(self._recent_item_stylesheet())
+        lbl_time = item_widget.findChild(QLabel, "recent_time")
+        if lbl_time is not None:
+            lbl_time.setText(time_text)
+            lbl_time.setStyleSheet(
+                f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none;"
+            )
+        lbl_amount = item_widget.findChild(QLabel, "recent_amount")
+        if lbl_amount is not None:
+            lbl_amount.setText(f"+{amount_ml} ml")
             lbl_amount.setStyleSheet(
                 f"color: {ThemeManager.color('accent')}; font-weight: bold; font-size: 14px; border: none;"
             )
-            row.addWidget(lbl_amount)
-            
-            self.recent_layout.addWidget(item_widget)
-            
-        self.recent_layout.addStretch()
         
     def update_next_reminder(self, time_str: str):
         self._next_reminder_time = time_str
@@ -191,6 +223,15 @@ class DashboardPage(QWidget):
             }}
             QPushButton:pressed {{
                 background-color: {ThemeManager.color('btn_pill_pressed')};
+            }}
+        """
+
+    def _recent_item_stylesheet(self) -> str:
+        return f"""
+            QWidget {{
+                background-color: {ThemeManager.color('bg_card')};
+                border-radius: 10px;
+                border: 1px solid {ThemeManager.color('border_light')};
             }}
         """
 

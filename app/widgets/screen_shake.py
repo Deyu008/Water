@@ -11,8 +11,10 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import QApplication, QGraphicsOpacityEffect, QPushButton, QWidget
+
+from app.core.theme import ThemeManager
 
 
 class ScreenShakeReminder(QWidget):
@@ -49,6 +51,22 @@ class ScreenShakeReminder(QWidget):
         # ── shake offset (animated property) ──
         self._shake_offset = 0
 
+        # ── cached colors ──
+        self._overlay_bg = QColor()
+        self._title_color = QColor()
+        self._subtitle_color = QColor()
+        self._drop_start = QColor()
+        self._drop_end = QColor()
+        self._drop_outline = QColor()
+        self._drop_highlight = QColor()
+
+        # ── cached drop pixmap ──
+        self._drop_pixmap: QPixmap | None = None
+        self._last_drop_size: tuple[int, int] = (0, 0)
+
+        # ── cached fonts for paintEvent ──
+        self._title_font = QFont("Segoe UI", 28, QFont.Bold)
+        self._sub_font = QFont("Segoe UI", 14)
         # ── opacity effect for fade-out ──
         self._opacity_effect = QGraphicsOpacityEffect(self)
         self._opacity_effect.setOpacity(1.0)
@@ -60,25 +78,6 @@ class ScreenShakeReminder(QWidget):
 
         self._drink_btn.setCursor(Qt.PointingHandCursor)
         self._dismiss_btn.setCursor(Qt.PointingHandCursor)
-
-        self._drink_btn.setStyleSheet(
-            "QPushButton {"
-            "  background-color: rgba(58, 134, 255, 230);"
-            "  color: white; border: none; border-radius: 14px;"
-            "  font-weight: 600; font-size: 16px; padding: 12px 28px;"
-            "}"
-            "QPushButton:hover { background-color: rgba(70, 145, 255, 245); }"
-            "QPushButton:pressed { background-color: rgba(42, 116, 230, 255); }"
-        )
-        self._dismiss_btn.setStyleSheet(
-            "QPushButton {"
-            "  background-color: rgba(255, 255, 255, 50);"
-            "  color: rgba(255, 255, 255, 200); border: 1px solid rgba(255,255,255,60);"
-            "  border-radius: 14px; font-size: 14px; padding: 10px 22px;"
-            "}"
-            "QPushButton:hover { background-color: rgba(255, 255, 255, 80); }"
-            "QPushButton:pressed { background-color: rgba(255, 255, 255, 100); }"
-        )
 
         self._drink_btn.clicked.connect(self._on_drink)
         self._dismiss_btn.clicked.connect(self._on_dismiss)
@@ -117,6 +116,10 @@ class ScreenShakeReminder(QWidget):
         self._fade_anim.setEasingCurve(QEasingCurve.InCubic)
         self._fade_anim.finished.connect(self._on_fade_finished)
 
+        # ── apply theme ──
+        ThemeManager.signals.theme_applied.connect(self._on_theme_applied)
+        self.apply_theme()
+
     # ── animated property ──
     def _get_shake_offset(self):
         return self._shake_offset
@@ -126,6 +129,43 @@ class ScreenShakeReminder(QWidget):
         self.update()
 
     shake_offset_prop = Property(int, _get_shake_offset, _set_shake_offset)
+
+    # ── theme ──
+    def _on_theme_applied(self, _theme_name: str):
+        self.apply_theme()
+
+    def apply_theme(self):
+        self._overlay_bg = ThemeManager.qcolor("shake_overlay_bg")
+        self._title_color = ThemeManager.qcolor("shake_title")
+        self._subtitle_color = ThemeManager.qcolor("shake_subtitle")
+        self._drop_start = ThemeManager.qcolor("shake_drop_start")
+        self._drop_end = ThemeManager.qcolor("shake_drop_end")
+        self._drop_outline = ThemeManager.qcolor("shake_drop_outline")
+        self._drop_highlight = ThemeManager.qcolor("shake_drop_highlight")
+
+        # Invalidate cached pixmap
+        self._drop_pixmap = None
+
+        self._drink_btn.setStyleSheet(
+            "QPushButton {"
+            f"  background-color: {ThemeManager.color('shake_btn_bg')};"
+            "  color: white; border: none; border-radius: 14px;"
+            "  font-weight: 600; font-size: 16px; padding: 12px 28px;"
+            "}"
+            f"QPushButton:hover {{ background-color: {ThemeManager.color('shake_btn_hover')}; }}"
+            f"QPushButton:pressed {{ background-color: {ThemeManager.color('shake_btn_pressed')}; }}"
+        )
+        self._dismiss_btn.setStyleSheet(
+            "QPushButton {"
+            f"  background-color: {ThemeManager.color('shake_dismiss_bg')};"
+            f"  color: {ThemeManager.color('shake_dismiss_text')};"
+            f"  border: 1px solid {ThemeManager.color('shake_dismiss_border')};"
+            "  border-radius: 14px; font-size: 14px; padding: 10px 22px;"
+            "}"
+            f"QPushButton:hover {{ background-color: {ThemeManager.color('shake_dismiss_hover')}; }}"
+            f"QPushButton:pressed {{ background-color: {ThemeManager.color('shake_dismiss_pressed')}; }}"
+        )
+        self.update()
 
     # ── public API ──
     def show_shake(self):
@@ -162,53 +202,69 @@ class ScreenShakeReminder(QWidget):
 
         # Semi-transparent backdrop
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(0, 0, 0, 140))
+        painter.setBrush(self._overlay_bg)
         painter.drawRect(self.rect())
 
         # Center content area with shake offset
         cx = w // 2 + self._shake_offset
         cy = h // 2 - 40
 
-        # Draw water drop icon
-        self._paint_drop(painter, cx, cy - 60, scale=2.5)
+        # Draw water drop icon (cached pixmap, DPR-aware)
+        drop_pixmap = self._get_drop_pixmap(scale=2.5)
+        dp_dpr = drop_pixmap.devicePixelRatio()
+        lw = int(drop_pixmap.width() / dp_dpr)
+        lh = int(drop_pixmap.height() / dp_dpr)
+        painter.drawPixmap(
+            cx - lw // 2,
+            cy - 60 - lh // 2,
+            drop_pixmap,
+        )
 
         # Title
-        title_font = QFont("Segoe UI", 28, QFont.Bold)
-        painter.setFont(title_font)
-        painter.setPen(QColor(255, 255, 255, 240))
+        painter.setFont(self._title_font)
+        painter.setPen(self._title_color)
         title_rect = QRect(cx - 200, cy + 10, 400, 50)
         painter.drawText(title_rect, Qt.AlignCenter, "Time to Drink Water!")
 
         # Subtitle
-        sub_font = QFont("Segoe UI", 14)
-        painter.setFont(sub_font)
-        painter.setPen(QColor(200, 220, 255, 180))
+        painter.setFont(self._sub_font)
+        painter.setPen(self._subtitle_color)
         sub_rect = QRect(cx - 200, cy + 60, 400, 30)
         painter.drawText(sub_rect, Qt.AlignCenter, "Stay hydrated for better health")
 
-    def _paint_drop(self, painter: QPainter, cx: int, cy: int, scale: float = 1.0):
-        """Draw a water drop icon centered at (cx, cy)."""
+    def _get_drop_pixmap(self, scale: float = 2.5) -> QPixmap:
+        """Return cached QPixmap of the water drop icon."""
         s = scale
+        # Account for device pixel ratio for crisp rendering on high-DPI
+        dpr = self.devicePixelRatio() if self.devicePixelRatio() > 0 else 1.0
+        pw_dev = int(40 * s * dpr)
+        ph_dev = int(44 * s * dpr)
+        size = (pw_dev, ph_dev)
+        if self._drop_pixmap is not None and self._last_drop_size == size:
+            return self._drop_pixmap
+
+        pixmap = QPixmap(pw_dev, ph_dev)
+        pixmap.setDevicePixelRatio(dpr)
+        pixmap.fill(Qt.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        # Paint in logical coordinates (pixmap handles DPR scaling)
+        pw = int(40 * s)
+        ph = int(44 * s)
+        cx = pw // 2
+        cy = ph // 2
         path = QPainterPath()
         path.moveTo(cx, cy - 20 * s)
-        path.cubicTo(
-            cx - 18 * s, cy - 2 * s,
-            cx - 16 * s, cy + 12 * s,
-            cx, cy + 22 * s,
-        )
-        path.cubicTo(
-            cx + 16 * s, cy + 12 * s,
-            cx + 18 * s, cy - 2 * s,
-            cx, cy - 20 * s,
-        )
-
-        from PySide6.QtGui import QLinearGradient
+        path.cubicTo(cx - 18 * s, cy - 2 * s, cx - 16 * s, cy + 12 * s, cx, cy + 22 * s)
+        path.cubicTo(cx + 16 * s, cy + 12 * s, cx + 18 * s, cy - 2 * s, cx, cy - 20 * s)
 
         gradient = QLinearGradient(cx, cy - 20 * s, cx, cy + 22 * s)
-        gradient.setColorAt(0.0, QColor(122, 214, 255, 255))
-        gradient.setColorAt(1.0, QColor(57, 154, 245, 255))
+        gradient.setColorAt(0.0, self._drop_start)
+        gradient.setColorAt(1.0, self._drop_end)
 
-        painter.setPen(QColor(255, 255, 255, 100))
+        painter.setPen(self._drop_outline)
         painter.setBrush(gradient)
         painter.drawPath(path)
 
@@ -216,8 +272,14 @@ class ScreenShakeReminder(QWidget):
         highlight = QPainterPath()
         highlight.addEllipse(QPoint(int(cx - 5 * s), int(cy - 4 * s)), int(5 * s), int(7 * s))
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(255, 255, 255, 90))
+        painter.setBrush(self._drop_highlight)
         painter.drawPath(highlight)
+
+        painter.end()
+
+        self._drop_pixmap = pixmap
+        self._last_drop_size = size
+        return pixmap
 
     # ── button layout ──
     def _layout_buttons(self):

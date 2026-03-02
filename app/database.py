@@ -12,8 +12,9 @@ class Database:
     def __init__(self, db_path: Path | str | None = None):
         self.db_path: Path = Path(db_path) if db_path is not None else get_db_path()
         _ = self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn: sqlite3.Connection = sqlite3.connect(str(self.db_path))
+        self.conn: sqlite3.Connection = sqlite3.connect(str(self.db_path), timeout=5.0)
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
         self._init_db()
 
     def _init_db(self) -> None:

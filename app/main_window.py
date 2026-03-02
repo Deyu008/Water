@@ -10,23 +10,23 @@ class MainWindow(QMainWindow):
     """
     Main application window with frameless design.
     """
-    
+
     def __init__(self):
         super().__init__()
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumSize(750, 500)
         self.resize(900, 650)
-        
+
         # Resize logic variables
-        self._resize_margin = 5
+        self._base_resize_margin = 5
         self._resizing = False
         self._resize_edge = None
         self._drag_pos = None
         
         self._build_ui()
         self._setup_connections()
-        ThemeManager.signals.theme_applied.connect(lambda _: self.apply_theme())
+        ThemeManager.signals.theme_applied.connect(self._on_theme_applied)
         self.apply_theme()
         
         # Enable mouse tracking for resize cursor updates
@@ -111,9 +111,15 @@ class MainWindow(QMainWindow):
         # Force style refresh
         self.container.style().unpolish(self.container)
         self.container.style().polish(self.container)
+
+    def _on_theme_applied(self, _theme_name: str):
+        self.apply_theme()
             
     # Resize Logic
     def mousePressEvent(self, event: QMouseEvent):
+        if self.isMaximized():
+            super().mousePressEvent(event)
+            return
         if event.button() == Qt.MouseButton.LeftButton:
             edge = self._hit_test(event.pos())
             if edge:
@@ -147,6 +153,11 @@ class MainWindow(QMainWindow):
             self._resize_edge = None
             self.setCursor(Qt.CursorShape.ArrowCursor) # Reset cursor
         super().mouseReleaseEvent(event)
+
+    @property
+    def _resize_margin(self) -> int:
+        """Resize margin in logical pixels (Qt events already use logical coords)."""
+        return self._base_resize_margin
 
     def _hit_test(self, pos: QPoint):
         rect = self.rect()

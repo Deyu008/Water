@@ -1,7 +1,7 @@
 import math
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QButtonGroup
-from PySide6.QtCore import Qt, Signal, QRect, QPointF
+from PySide6.QtCore import Qt, Signal, QRect, QPointF, QEvent
 from PySide6.QtGui import QPainter, QColor, QFont, QBrush, QPen, QPainterPath
 
 from app.core.theme import ThemeManager
@@ -17,6 +17,17 @@ class SidebarButton(QPushButton):
         self.setFixedHeight(48)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.icon_str = icon_str
+
+        # Neutralize qt-material global QPushButton styling (ALL pseudo-states)
+        self.setStyleSheet("""
+            QPushButton { background-color: transparent; border: none; padding: 0; margin: 0; }
+            QPushButton:hover { background-color: transparent; border: none; }
+            QPushButton:pressed { background-color: transparent; border: none; }
+            QPushButton:checked { background-color: transparent; border: none; }
+            QPushButton:checked:hover { background-color: transparent; border: none; }
+            QPushButton:flat { background-color: transparent; border: none; }
+        """)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
 
         # Colors
         self.default_bg = QColor(0, 0, 0, 0)  # Transparent
@@ -36,6 +47,14 @@ class SidebarButton(QPushButton):
         self.text_color_selected = ThemeManager.qcolor("sidebar_text_selected")
         self.icon_color_default = ThemeManager.qcolor("sidebar_icon_default")
         self.update()
+
+    def enterEvent(self, event):
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.update()
+        super().leaveEvent(event)
 
     def _draw_water_icon(self, painter: QPainter, icon_rect: QRect, color: QColor):
         painter.save()

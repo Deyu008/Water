@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import logging
 import os
 import sys
 import types
@@ -22,9 +23,12 @@ from app.main_window import MainWindow
 from app.widgets.toast_reminder import ToastReminder
 from app.widgets.screen_shake import ScreenShakeReminder
 
+logger = logging.getLogger(__name__)
+
 try:
     from app.pages.dashboard import DashboardPage
 except Exception:
+    logger.warning("Failed to import DashboardPage, using stub", exc_info=True)
     class DashboardPage(QWidget):
         water_added = Signal(int)
 
@@ -48,6 +52,7 @@ except Exception:
 try:
     from app.pages.history import HistoryPage
 except Exception:
+    logger.warning("Failed to import HistoryPage, using stub", exc_info=True)
     class HistoryPage(QWidget):
         period_changed = Signal(int)
 
@@ -65,6 +70,7 @@ except Exception:
 try:
     from app.pages.settings import SettingsPage
 except Exception:
+    logger.warning("Failed to import SettingsPage, using stub", exc_info=True)
     class SettingsPage(QWidget):
         interval_changed = Signal(int)
         goal_changed = Signal(int)
@@ -360,9 +366,14 @@ class WaterApp:
     def _on_autostart_changed(self, enabled: bool) -> None:
         enabled_value = bool(enabled)
         if enabled_value:
-            _ = AutoStartManager.enable()
+            success = AutoStartManager.enable()
         else:
-            _ = AutoStartManager.disable()
+            success = AutoStartManager.disable()
+
+        if not success:
+            logger.warning("Autostart %s failed", "enable" if enabled_value else "disable")
+            # Don't save config on failure — keep UI/config in sync with system state
+            return
 
         if self.config is not None:
             self.config.autostart_enabled = enabled_value

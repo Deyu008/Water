@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRectF
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRectF, QPointF
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QConicalGradient, QBrush, QFontMetrics
 
 from app.core.theme import ThemeManager
@@ -7,32 +7,41 @@ from app.core.theme import ThemeManager
 class CircularProgress(QWidget):
     """
     Custom circular progress widget with smooth animation.
-    
+
     Visual Design:
     - Outer ring: thin track (background, gray/light)
     - Inner ring: progress arc (gradient from #2196F3 to #64B5F6, blue spectrum)
     - Center: large text showing current/goal
     """
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(200, 200)
         self.setMaximumSize(280, 280)
         self.resize(220, 220)
-        
+
         self._progress = 0.0  # 0.0 to 1.0
         self._current_ml = 0
         self._goal_ml = 2000
-        
+
         # Colors
         self._track_color = QColor()
         self._progress_start_color = QColor()
         self._progress_end_color = QColor()
         self._text_color = QColor()
         self._subtext_color = QColor()
-        
+
         self._ring_width = 16
-        
+
+        # Cached paint objects (rebuilt on theme/size change)
+        self._cached_side = 0
+        self._track_pen = QPen()
+        self._font_big = QFont()
+        self._font_small = QFont()
+        self._fm_big_height = 0
+        self._fm_small_height = 0
+        self._text_gap = 4
+
         # Animation
         self._anim = QPropertyAnimation(self, b"progress_value")
         self._anim.setDuration(800)
@@ -50,6 +59,7 @@ class CircularProgress(QWidget):
         self._progress_end_color = ThemeManager.qcolor("progress_end")
         self._text_color = ThemeManager.qcolor("progress_text")
         self._subtext_color = ThemeManager.qcolor("progress_subtext")
+        self._cached_side = 0  # force rebuild
         self.update()
 
     def get_progress_value(self):
@@ -60,113 +70,122 @@ class CircularProgress(QWidget):
         self.update()
 
     progress_value = Property(float, get_progress_value, set_progress_value)
-    
+
     def set_value(self, current_ml: int, goal_ml: int):
         self._current_ml = current_ml
         self._goal_ml = max(1, goal_ml)
-        
-        # Calculate target progress (capped at 1.0 for the ring, but text shows real value)
+
         target = min(1.0, current_ml / self._goal_ml)
-        
-        # Animate
+
         self._anim.stop()
         self._anim.setStartValue(self._progress)
         self._anim.setEndValue(target)
         self._anim.start()
-        
-        # If no animation is desired for text update (immediate), we could trigger update here
-        # but the animation loop calls update() so text will refresh with the ring
-        
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._cached_side = 0  # force rebuild on next paint
+
+    def _rebuild_cache(self, side: int):
+        """Rebuild cached pens/fonts when size changes."""
+        self._cached_side = side
+
+        self._track_pen = QPen(self._track_color)
+        self._track_pen.setWidth(self._ring_width)
+        self._track_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+
+        font_size = max(12, int(side * 0.16))
+        self._font_big = QFont("Segoe UI", font_size, QFont.Weight.Bold)
+        self._fm_big_height = QFontMetrics(self._font_big).height()
+
+        font_size_small = max(8, int(side * 0.06))
+        self._font_small = QFont("Segoe UI", font_size_small)
+        self._fm_small_height = QFontMetrics(self._font_small).height()
+
+        self._text_gap = max(4, int(side * 0.02))
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        # Setup geometry
+
         width = self.width()
         height = self.height()
         side = min(width, height)
-        
-        # Center point
+
+        # Rebuild cached objects if size changed
+        if side != self._cached_side:
+            self._rebuild_cache(side)
+
         center_x = width / 2
         center_y = height / 2
-        
-        # Radius for the ring
-        # Subtract ring width / 2 to keep stroke inside
-        radius = (side - self._ring_width) / 2 - 10 
-        
+        radius = (side - self._ring_width) / 2 - 10
         rect = QRectF(center_x - radius, center_y - radius, radius * 2, radius * 2)
-        
-        # 1. Draw track ring
-        track_pen = QPen(self._track_color)
-        track_pen.setWidth(self._ring_width)
-        track_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.setPen(track_pen)
+
+        # 1. Draw track ring (use cached pen, update color in case theme changed)
+        self._track_pen.setColor(self._track_color)
+        painter.setPen(self._track_pen)
         painter.drawEllipse(rect)
-        
-        # 2. Draw progress arc
-        # We want to start from top (90 degrees). Qt angles: 0 is 3 o'clock, increases counter-clockwise.
-        # So top is 90. But drawArc takes startAngle in 1/16th of a degree.
-        # However, for gradients it's easier to use QConicalGradient or just rotate the painter.
-        
-        # Let's use a simpler approach for the arc: drawArc with a gradient pen if possible, 
-        # but standard QPen doesn't support gradient along the path easily in Qt5/6 without QBrush.
-        # A solid color or simple gradient is fine. Let's try QConicalGradient for a nice effect.
-        
+
+        # 2. Draw progress arc with manually-drawn round endpoints
         if self._progress > 0:
-            # Create a conical gradient
+            import math
+
             gradient = QConicalGradient(center_x, center_y, 90)
             gradient.setColorAt(0, self._progress_start_color)
             gradient.setColorAt(1, self._progress_end_color)
-            
-            # To make the gradient follow the arc, we can just use a solid color 
-            # or a brush. But stroking a path with a gradient is tricky.
-            # Simplified: Use the start color, maybe slight variation. 
-            # Or actually, QPen can take a QBrush.
-            
-            pen_brush = QBrush(gradient)
-            progress_pen = QPen(pen_brush, self._ring_width)
-            progress_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+
+            # Draw arc with FlatCap to avoid built-in cap misalignment
+            progress_pen = QPen(QBrush(gradient), self._ring_width)
+            progress_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
             painter.setPen(progress_pen)
-            
-            # Span angle is negative for clockwise
-            # 360 * progress
-            # Start at 90 deg (12 o'clock) -> 90 * 16
+
             start_angle = 90 * 16
             span_angle = -int(self._progress * 360 * 16)
-            
             painter.drawArc(rect, start_angle, span_angle)
 
+            # Draw manual round caps at start and end points
+            half_w = self._ring_width / 2.0
+            # Start point: 12 o'clock (90 degrees)
+            start_rad = math.radians(90)
+            sx = center_x + radius * math.cos(start_rad)
+            sy = center_y - radius * math.sin(start_rad)
+
+            # End point: 90 - progress*360 degrees
+            end_deg = 90 - self._progress * 360
+            end_rad = math.radians(end_deg)
+            ex = center_x + radius * math.cos(end_rad)
+            ey = center_y - radius * math.sin(end_rad)
+
+            painter.setPen(Qt.PenStyle.NoPen)
+            # Start cap color (gradient at 0 = start color)
+            painter.setBrush(QBrush(self._progress_start_color))
+            painter.drawEllipse(QPointF(sx, sy), half_w, half_w)
+            # End cap: sample the gradient color at progress fraction
+            # For conical gradient starting at 90° going clockwise, the end is at progress fraction
+            end_frac = self._progress
+            # Interpolate between start and end colors
+            r = int(self._progress_start_color.red() + (self._progress_end_color.red() - self._progress_start_color.red()) * end_frac)
+            g = int(self._progress_start_color.green() + (self._progress_end_color.green() - self._progress_start_color.green()) * end_frac)
+            b = int(self._progress_start_color.blue() + (self._progress_end_color.blue() - self._progress_start_color.blue()) * end_frac)
+            end_cap_color = QColor(r, g, b)
+            painter.setBrush(QBrush(end_cap_color))
+            painter.drawEllipse(QPointF(ex, ey), half_w, half_w)
+
         # 3. Draw Center Text
-        painter.setPen(self._text_color)
-
-        # Current Value (Big)
-        font_size = max(12, int(side * 0.16))
-        font_big = QFont("Segoe UI", font_size, QFont.Weight.Bold)
-        painter.setFont(font_big)
-
-        fm_big = QFontMetrics(font_big)
-        big_height = fm_big.height()
-
-        # Goal Value (Small)
-        font_size_small = max(8, int(side * 0.06))
-        font_small = QFont("Segoe UI", font_size_small)
-        fm_small = QFontMetrics(font_small)
-        small_height = fm_small.height()
-
-        text_gap = max(4, int(side * 0.02))
-        text_block_height = big_height + text_gap + small_height
+        text_block_height = self._fm_big_height + self._text_gap + self._fm_small_height
         text_top = center_y - text_block_height / 2
 
-        text_rect_big = QRectF(center_x - radius, text_top, radius * 2, float(big_height))
+        painter.setPen(self._text_color)
+        painter.setFont(self._font_big)
+        text_rect_big = QRectF(center_x - radius, text_top, radius * 2, float(self._fm_big_height))
         painter.drawText(text_rect_big, Qt.AlignmentFlag.AlignCenter, str(self._current_ml))
 
         painter.setPen(self._subtext_color)
-        painter.setFont(font_small)
-
+        painter.setFont(self._font_small)
         text_rect_small = QRectF(
             center_x - radius,
-            text_top + big_height + text_gap,
+            text_top + self._fm_big_height + self._text_gap,
             radius * 2,
-            float(small_height),
+            float(self._fm_small_height),
         )
         painter.drawText(text_rect_small, Qt.AlignmentFlag.AlignCenter, f"/ {self._goal_ml} ml")

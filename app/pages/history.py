@@ -245,9 +245,9 @@ class HistoryPage(QWidget):
         self.bar_set.remove(0, self.bar_set.count())
         self.goal_series.clear()
         categories = []
-        
+
         max_val = float(goal_ml)
-        
+
         if not daily_totals:
             self.axis_x.clear()
             self.axis_y.setRange(0, goal_ml * 1.2)
@@ -261,7 +261,7 @@ class HistoryPage(QWidget):
             except (TypeError, ValueError):
                 val = 0.0
             self.bar_set.append(val)
-            
+
             date_str = str(entry.get("date", ""))
             if len(date_str) >= 10:
                 short_date = date_str[5:] # 2026-02-28 -> 02-28
@@ -269,16 +269,26 @@ class HistoryPage(QWidget):
                 short_date = date_str
             categories.append(short_date)
             max_val = max(max_val, val)
-            
+
         self.axis_x.setCategories(categories)
-        self.axis_y.setRange(0, max_val * 1.1)
-        
+        self.axis_y.setRange(0, self._nice_ceil(max_val * 1.1))
+
         # Update goal line
         count = len(categories)
         self.axis_x_line.setRange(-0.5, count - 0.5)
-        
+
         self.goal_series.append(-0.5, goal_ml)
         self.goal_series.append(count - 0.5, goal_ml)
+
+    @staticmethod
+    def _nice_ceil(value: float) -> int:
+        """Round up to a nice human-readable number (e.g. 500, 1000, 1500, 2000, 2500...)."""
+        import math
+        if value <= 0:
+            return 500
+        # Choose step: 500 for values up to ~5000, 1000 for larger
+        step = 500 if value <= 5000 else 1000
+        return max(step, int(math.ceil(value / step) * step))
 
     def update_stats(self, avg_ml: int, best_ml: int, total_ml: int):
         self.card_avg.set_value(f"{int(avg_ml)} ml")

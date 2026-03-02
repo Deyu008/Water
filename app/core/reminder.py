@@ -52,11 +52,8 @@ class ReminderEngine(QObject):
         if self._state != "running":
             return
 
-        remaining = self._timer.remainingTime()
-        if remaining <= 0:
-            remaining = self._interval_ms
-
-        self._remaining_ms = remaining
+        remaining = self._compute_remaining_ms()
+        self._remaining_ms = max(1, remaining)
         self._timer.stop()
         self._next_due = None
         self.next_due_changed.emit("")
@@ -100,18 +97,40 @@ class ReminderEngine(QObject):
     def next_due(self) -> datetime | None:
         return self._next_due
 
+    def _compute_remaining_ms(self) -> int:
+        """Compute remaining ms based on absolute next_due time.
+
+        This is more robust than QTimer.remainingTime() after system
+        sleep/resume, because the absolute timestamp doesn't drift.
+        """
+        if self._next_due is not None:
+            delta = (self._next_due - datetime.now()).total_seconds()
+            return max(1, int(delta * 1000))
+        remaining = self._timer.remainingTime()
+        return remaining if remaining > 0 else self._interval_ms
+
     @Slot()
     def _on_timeout(self):
         if self._state != "running":
             return
+
+        # After system sleep the timer may fire late. Check if we're actually
+        # past due (or close enough) before triggering.
+        if self._next_due is not None:
+            now = datetime.now()
+            remaining = (self._next_due - now).total_seconds()
+            if remaining > 1:
+                # Not yet due (timer fired early or spurious), reschedule
+                self._start_timer(int(remaining * 1000))
+                return
 
         self.remind_triggered.emit()
         self._start_timer(self._interval_ms)
 
     def _start_timer(self, delay_ms: int):
         delay_ms = max(1, int(delay_ms))
-        self._timer.start(delay_ms)
         self._next_due = datetime.now() + timedelta(milliseconds=delay_ms)
+        self._timer.start(delay_ms)
         self.next_due_changed.emit(self._next_due.strftime("%H:%M"))
 
     def _set_state(self, state: str):

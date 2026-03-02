@@ -21,7 +21,7 @@ class TrayManager(QObject):
         self._tray_icon.setIcon(self._create_water_drop_icon())
         self._tray_icon.setToolTip("Water Reminder")
 
-        self._menu = QMenu()
+        self._menu = QMenu()  # no parent: QMenu requires QWidget, TrayManager is QObject
         self._title_action = QAction("Water Reminder", self)
         self._title_action.setEnabled(False)
 
@@ -113,3 +113,6 @@ class TrayManager(QObject):
 
     def hide(self):
         self._tray_icon.hide()
+        if self._menu is not None:
+            self._menu.deleteLater()
+            self._menu = None  # prevent dangling reference

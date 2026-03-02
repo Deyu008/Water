@@ -1,20 +1,24 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QRectF
+from PySide6.QtGui import QPainter, QPen
 
 from app.core.theme import ThemeManager
 
 class TitleBarButton(QPushButton):
     """Custom button for title bar controls (Minimize, Maximize, Close)."""
-    def __init__(self, text, parent=None, is_close=False):
-        super().__init__(text, parent)
+    def __init__(self, icon_kind, parent=None, is_close=False):
+        super().__init__("", parent)
         self.setFixedSize(46, 40)
         self.is_close = is_close
+        self.icon_kind = icon_kind
+        self._icon_color = ThemeManager.qcolor("titlebar_btn_text")
         self.apply_theme()
 
     def apply_theme(self):
         text_color = ThemeManager.color("titlebar_btn_text")
         hover_bg = ThemeManager.color("titlebar_close_hover") if self.is_close else ThemeManager.color("titlebar_btn_hover")
         pressed_bg = ThemeManager.color("titlebar_close_pressed") if self.is_close else ThemeManager.color("titlebar_btn_pressed")
+        self._icon_color = ThemeManager.qcolor("titlebar_btn_text")
 
         self.setStyleSheet(
             f"""
@@ -35,6 +39,53 @@ class TitleBarButton(QPushButton):
                 }}
             """
         )
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        icon_color = self._icon_color
+        if not icon_color.isValid():
+            return
+
+        pen = QPen(icon_color)
+        pen.setWidthF(1.8)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        w = self.width()
+        h = self.height()
+        cx = w / 2.0
+        cy = h / 2.0
+
+        if self.icon_kind == "minimize":
+            half = 6.0
+            y = cy + 4.0
+            painter.drawLine(int(cx - half), int(y), int(cx + half), int(y))
+            return
+
+        if self.icon_kind == "maximize":
+            size = 12.0
+            half = size / 2.0
+            if self.window() is not None and self.window().isMaximized():
+                back = QRectF(cx - half - 2.0, cy - half + 1.0, size, size)
+                front = QRectF(cx - half + 1.5, cy - half - 2.0, size, size)
+                painter.drawRect(back)
+                painter.drawRect(front)
+            else:
+                rect = QRectF(cx - half, cy - half, size, size)
+                painter.drawRect(rect)
+            return
+
+        if self.icon_kind == "close":
+            half = 5.8
+            painter.drawLine(int(cx - half), int(cy - half), int(cx + half), int(cy + half))
+            painter.drawLine(int(cx + half), int(cy - half), int(cx - half), int(cy + half))
 
 class TitleBar(QWidget):
     """
@@ -70,17 +121,17 @@ class TitleBar(QWidget):
         
         # 3. Window Controls
         # Minimize (—)
-        self.btn_minimize = TitleBarButton("─")
+        self.btn_minimize = TitleBarButton("minimize")
         self.btn_minimize.clicked.connect(self.minimize_clicked.emit)
         layout.addWidget(self.btn_minimize)
-        
+
         # Maximize/Restore (□)
-        self.btn_maximize = TitleBarButton("□") 
+        self.btn_maximize = TitleBarButton("maximize")
         self.btn_maximize.clicked.connect(self.maximize_clicked.emit)
         layout.addWidget(self.btn_maximize)
-        
+
         # Close (✕)
-        self.btn_close = TitleBarButton("✕", is_close=True)
+        self.btn_close = TitleBarButton("close", is_close=True)
         self.btn_close.clicked.connect(self.close_clicked.emit)
         layout.addWidget(self.btn_close)
 
