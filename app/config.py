@@ -19,6 +19,8 @@ class AppConfig:
     autostart_enabled: bool = False
     reminder_sound: str = "default.wav"
     shake_reminder_enabled: bool = False
+    reminder_start_time: str = "08:00"
+    reminder_end_time: str = "22:00"
     window_geometry: dict[str, int] | None = None
 
     @classmethod
@@ -59,6 +61,8 @@ class AppConfig:
             autostart_enabled=_to_bool(raw.get("autostart_enabled"), False),
             reminder_sound=reminder_sound_value,
             shake_reminder_enabled=_to_bool(raw.get("shake_reminder_enabled"), False),
+            reminder_start_time=_to_time_str(raw, "reminder_start_time", "reminder_start_hour", "08:00"),
+            reminder_end_time=_to_time_str(raw, "reminder_end_time", "reminder_end_hour", "22:00"),
             window_geometry=_to_window_geometry(raw.get("window_geometry")),
         )
 
@@ -128,3 +132,20 @@ def _to_window_geometry(value: object) -> dict[str, int] | None:
             return None
         geometry[key] = _to_int(value_dict[key], 0)
     return geometry
+
+
+def _to_time_str(raw: dict[str, object], time_key: str, hour_key: str, default: str) -> str:
+    raw_time = raw.get(time_key)
+    if isinstance(raw_time, str) and ":" in raw_time:
+        parts = raw_time.split(":")
+        try:
+            h = max(0, min(23, int(parts[0])))
+            m = max(0, min(59, int(parts[1])))
+            return f"{h:02d}:{m:02d}"
+        except (ValueError, IndexError):
+            pass
+    raw_hour = raw.get(hour_key)
+    if raw_hour is not None:
+        h = max(0, min(23, _to_int(raw_hour, int(default.split(":")[0]))))
+        return f"{h:02d}:00"
+    return default

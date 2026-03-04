@@ -63,6 +63,22 @@ class Database:
         self.conn.commit()
         return cur.rowcount > 0
 
+    def clear_today(self) -> int:
+        """Delete all intake records for today (local time). Returns count deleted."""
+        now_local = datetime.now().astimezone()
+        start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_local = start_local + timedelta(days=1)
+
+        start_utc = int(start_local.astimezone(timezone.utc).timestamp())
+        end_utc = int(end_local.astimezone(timezone.utc).timestamp())
+
+        cur = self.conn.execute(
+            "DELETE FROM intake WHERE ts_utc >= ? AND ts_utc < ?",
+            (start_utc, end_utc),
+        )
+        self.conn.commit()
+        return cur.rowcount
+
     def get_today_total(self) -> int:
         now_local = datetime.now().astimezone()
         start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
