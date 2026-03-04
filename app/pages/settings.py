@@ -1,6 +1,7 @@
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTime, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame, QHBoxLayout, QLabel,
-                               QListView, QScrollArea, QSlider, QSpinBox, QVBoxLayout, QWidget)
+                               QListView, QPushButton, QScrollArea, QSlider, QSpinBox,
+                               QTimeEdit, QVBoxLayout, QWidget)
 
 from app.core.theme import ThemeManager
 
@@ -79,10 +80,13 @@ class SettingsPage(QWidget):
 
     interval_changed = Signal(int)
     goal_changed = Signal(int)
+    reminder_start_time_changed = Signal(str)
+    reminder_end_time_changed = Signal(str)
     theme_changed = Signal(str)
     sound_changed = Signal(bool)
     autostart_changed = Signal(bool)
     shake_changed = Signal(bool)
+    test_reminder_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -93,6 +97,7 @@ class SettingsPage(QWidget):
         self._muted_labels: list[QLabel] = []
         self._checkboxes: list[QCheckBox] = []
         self._sliders: list[QSlider] = []
+        self._accent_buttons: list[QPushButton] = []
 
         # Main Layout
         main_layout = QVBoxLayout(self)
@@ -116,6 +121,7 @@ class SettingsPage(QWidget):
 
         # --- Sections ---
         self._init_reminder_section()
+        self._init_time_range_section()
         self._init_goal_section()
         self._init_appearance_section()
         self._init_notifications_section()
@@ -177,6 +183,47 @@ class SettingsPage(QWidget):
 
         layout.addLayout(row)
         layout.addWidget(self.interval_slider)
+
+    def _init_time_range_section(self):
+        layout = self._create_section("提醒时间段")
+
+        start_row = QHBoxLayout()
+        start_label = QLabel("开始时间")
+        self._muted_labels.append(start_label)
+
+        self.start_time_edit = QTimeEdit()
+        self.start_time_edit.setDisplayFormat("HH:mm")
+        self.start_time_edit.setTime(QTime(8, 0))
+        self.start_time_edit.setFixedWidth(104)
+        self.start_time_edit.timeChanged.connect(
+            lambda t: self.reminder_start_time_changed.emit(t.toString("HH:mm"))
+        )
+
+        start_row.addWidget(start_label)
+        start_row.addStretch()
+        start_row.addWidget(self.start_time_edit)
+        layout.addLayout(start_row)
+
+        end_row = QHBoxLayout()
+        end_label = QLabel("结束时间")
+        self._muted_labels.append(end_label)
+
+        self.end_time_edit = QTimeEdit()
+        self.end_time_edit.setDisplayFormat("HH:mm")
+        self.end_time_edit.setTime(QTime(22, 0))
+        self.end_time_edit.setFixedWidth(104)
+        self.end_time_edit.timeChanged.connect(
+            lambda t: self.reminder_end_time_changed.emit(t.toString("HH:mm"))
+        )
+
+        end_row.addWidget(end_label)
+        end_row.addStretch()
+        end_row.addWidget(self.end_time_edit)
+        layout.addLayout(end_row)
+
+        desc_label = QLabel("只在该时间段内进行饮水提醒")
+        self._muted_labels.append(desc_label)
+        layout.addWidget(desc_label)
 
     def _init_goal_section(self):
         layout = self._create_section("每日目标")
@@ -246,6 +293,12 @@ class SettingsPage(QWidget):
         self._checkboxes.append(self.shake_check)
         layout.addWidget(self.shake_check)
 
+        self.test_reminder_btn = QPushButton("测试提醒效果")
+        self.test_reminder_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.test_reminder_btn.clicked.connect(self.test_reminder_requested.emit)
+        self._accent_buttons.append(self.test_reminder_btn)
+        layout.addWidget(self.test_reminder_btn)
+
     def _init_system_section(self):
         layout = self._create_section("系统")
 
@@ -280,6 +333,7 @@ class SettingsPage(QWidget):
         accent = ThemeManager.color("accent")
         accent_hover = ThemeManager.color("accent_hover")
         accent_light = ThemeManager.color("accent_light")
+        text_on_accent = ThemeManager.color("text_on_accent")
         bg_input = ThemeManager.color("bg_input")
         border_light = ThemeManager.color("border_light")
 
@@ -313,6 +367,26 @@ class SettingsPage(QWidget):
 
         for checkbox in self._checkboxes:
             checkbox.setStyleSheet(f"QCheckBox {{ color: {text_muted}; border: none; }}")
+
+        for button in self._accent_buttons:
+            button.setStyleSheet(
+                f"""
+                QPushButton {{
+                    background-color: {accent};
+                    color: {text_on_accent};
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 16px;
+                    font-weight: 600;
+                }}
+                QPushButton:hover {{
+                    background-color: {accent_hover};
+                }}
+                QPushButton:pressed {{
+                    background-color: {accent_light};
+                }}
+                """
+            )
 
         self.about_title_label.setStyleSheet(f"border: none; font-weight: bold; color: {accent};")
         self.about_desc_label.setStyleSheet(f"border: none; color: {text_muted};")
@@ -392,6 +466,8 @@ class SettingsPage(QWidget):
             self.goal_spin,
             self.interval_slider,
             self.interval_spin,
+            self.start_time_edit,
+            self.end_time_edit,
             self.theme_combo,
             self.sound_check,
             self.autostart_check,
@@ -414,6 +490,18 @@ class SettingsPage(QWidget):
                     val = int(raw_interval)
                     self.interval_slider.setValue(val)
                     self.interval_spin.setValue(val)
+
+            if "reminder_start_time" in config:
+                raw_val = config["reminder_start_time"]
+                if isinstance(raw_val, str) and ":" in raw_val:
+                    parts = raw_val.split(":")
+                    self.start_time_edit.setTime(QTime(int(parts[0]), int(parts[1])))
+
+            if "reminder_end_time" in config:
+                raw_val = config["reminder_end_time"]
+                if isinstance(raw_val, str) and ":" in raw_val:
+                    parts = raw_val.split(":")
+                    self.end_time_edit.setTime(QTime(int(parts[0]), int(parts[1])))
 
             if "theme" in config:
                 raw_theme = config["theme"]

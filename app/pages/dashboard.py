@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                               QPushButton, QScrollArea, QFrame, QSizePolicy, QGridLayout)
+                                QPushButton, QScrollArea, QFrame, QSizePolicy, QGridLayout, QMessageBox)
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QIcon, QFont, QColor
 
@@ -7,10 +7,9 @@ from app.widgets.circular_progress import CircularProgress
 from app.core.theme import ThemeManager
 
 class DashboardPage(QWidget):
-    """
-    Main dashboard page layout.
-    """
     water_added = Signal(int)
+    intake_deleted = Signal(int)
+    today_cleared = Signal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -80,12 +79,24 @@ class DashboardPage(QWidget):
         
         self._layout.addSpacing(8)
         
-        # 5. Recent Activity Header
+        # 5. Recent Activity Header + Clear Button
+        recent_header_row = QHBoxLayout()
+
         self.lbl_recent = QLabel("最近记录")
         self.lbl_recent.setStyleSheet(
             f"font-size: 18px; font-weight: 600; color: {ThemeManager.color('text_primary')};"
         )
-        self._layout.addWidget(self.lbl_recent)
+        recent_header_row.addWidget(self.lbl_recent)
+        recent_header_row.addStretch()
+
+        self.btn_clear_today = QPushButton("清空今日")
+        self.btn_clear_today.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_today.setFixedHeight(30)
+        self.btn_clear_today.setStyleSheet(self._clear_button_stylesheet())
+        self.btn_clear_today.clicked.connect(self._on_clear_today)
+        recent_header_row.addWidget(self.btn_clear_today)
+
+        self._layout.addLayout(recent_header_row)
         
         # 6. Recent Activity List (Scroll Area)
         # We'll use a QScrollArea containing a VBox
@@ -161,7 +172,14 @@ class DashboardPage(QWidget):
 
         # Update existing / create new widgets
         for idx, record in enumerate(self._last_records):
+            raw_record_id = record.get('id', 0)
+            try:
+                record_id = int(str(raw_record_id))
+            except (TypeError, ValueError):
+                record_id = 0
+
             time_text = str(record.get('time', '--:--'))
+            source_text = self._source_display_text(record.get('source', 'manual'))
             raw_amount = record.get('amount_ml', 0)
             try:
                 amount_ml = int(str(raw_amount))
@@ -172,52 +190,180 @@ class DashboardPage(QWidget):
                 # Reuse existing widget
                 item_widget = self.recent_layout.itemAt(idx).widget()
                 if item_widget is not None:
-                    self._update_recent_item(item_widget, time_text, amount_ml)
+                    self._update_recent_item(item_widget, record_id, time_text, source_text, amount_ml)
             else:
                 # Create new widget
-                item_widget = self._create_recent_item(time_text, amount_ml)
+                item_widget = self._create_recent_item(record_id, time_text, source_text, amount_ml)
                 self.recent_layout.addWidget(item_widget)
 
         self.recent_layout.addStretch()
 
-    def _create_recent_item(self, time_text: str, amount_ml: int) -> QWidget:
+    @staticmethod
+    def _source_display_text(source: object) -> str:
+        source_map = {
+            'button': '快捷按钮',
+            'tray': '系统托盘',
+            'reminder': '提醒喝水',
+            'manual': '手动添加',
+        }
+        source_key = str(source).strip().lower()
+        return source_map.get(source_key, '手动添加')
+
+    @staticmethod
+    def _source_text_color() -> str:
+        source_color = ThemeManager.qcolor('text_muted')
+        source_color.setAlpha(150)
+        return source_color.name(QColor.NameFormat.HexArgb)
+
+    @staticmethod
+    def _recent_delete_button_stylesheet() -> str:
+        muted = ThemeManager.qcolor('text_muted')
+        muted.setAlpha(145)
+        muted_color = muted.name(QColor.NameFormat.HexArgb)
+        return f"""
+            QPushButton {{
+                border: none;
+                background: transparent;
+                color: {muted_color};
+                font-size: 18px;
+                font-weight: 600;
+                padding: 0;
+            }}
+            QPushButton:hover {{
+                color: {ThemeManager.color('text_primary')};
+                background-color: {ThemeManager.color('bg_hover')};
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: {ThemeManager.color('bg_selected')};
+            }}
+        """
+
+    def _create_recent_item(self, record_id: int, time_text: str, source_text: str, amount_ml: int) -> QWidget:
         item_widget = QWidget()
+        item_widget.setObjectName("recent_item_card")
+        item_widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         item_widget.setStyleSheet(self._recent_item_stylesheet())
-        item_widget.setFixedHeight(50)
+        item_widget.setFixedHeight(60)
 
         row = QHBoxLayout(item_widget)
-        row.setContentsMargins(15, 0, 15, 0)
+        row.setContentsMargins(12, 8, 12, 8)
+        row.setSpacing(10)
+
+        lbl_icon = QLabel("💧")
+        lbl_icon.setObjectName("recent_icon")
+        lbl_icon.setFixedSize(18, 18)
+        lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_icon.setStyleSheet(
+            f"color: {ThemeManager.color('accent')}; font-size: 14px; border: none; background: transparent;"
+        )
+        row.addWidget(lbl_icon, alignment=Qt.AlignmentFlag.AlignTop)
+
+        info_layout = QVBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(1)
 
         lbl_time = QLabel(time_text)
         lbl_time.setObjectName("recent_time")
         lbl_time.setStyleSheet(
-            f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none;"
+            f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none; background: transparent;"
         )
-        row.addWidget(lbl_time)
+        info_layout.addWidget(lbl_time)
+
+        lbl_source = QLabel(source_text)
+        lbl_source.setObjectName("recent_source")
+        lbl_source.setStyleSheet(
+            f"color: {self._source_text_color()}; font-size: 11px; border: none; background: transparent;"
+        )
+        info_layout.addWidget(lbl_source)
+
+        row.addLayout(info_layout)
         row.addStretch()
 
         lbl_amount = QLabel(f"+{amount_ml} ml")
         lbl_amount.setObjectName("recent_amount")
         lbl_amount.setStyleSheet(
-            f"color: {ThemeManager.color('accent')}; font-weight: bold; font-size: 14px; border: none;"
+            f"color: {ThemeManager.color('accent')}; font-weight: 700; font-size: 16px; border: none; background: transparent;"
         )
-        row.addWidget(lbl_amount)
+        row.addWidget(lbl_amount, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        btn_delete = QPushButton("×")
+        btn_delete.setObjectName("recent_delete_btn")
+        btn_delete.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_delete.setFixedSize(20, 20)
+        btn_delete.setFlat(True)
+        btn_delete.setProperty("record_id", int(record_id))
+        btn_delete.clicked.connect(self._on_delete_record)
+        btn_delete.setStyleSheet(self._recent_delete_button_stylesheet())
+        row.addWidget(btn_delete)
         return item_widget
 
-    def _update_recent_item(self, item_widget: QWidget, time_text: str, amount_ml: int):
+    def _update_recent_item(
+        self,
+        item_widget: QWidget,
+        record_id: int,
+        time_text: str,
+        source_text: str,
+        amount_ml: int,
+    ):
+        item_widget.setObjectName("recent_item_card")
+        item_widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         item_widget.setStyleSheet(self._recent_item_stylesheet())
         lbl_time = item_widget.findChild(QLabel, "recent_time")
         if lbl_time is not None:
             lbl_time.setText(time_text)
             lbl_time.setStyleSheet(
-                f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none;"
+                f"color: {ThemeManager.color('text_muted')}; font-size: 14px; border: none; background: transparent;"
             )
+
+        lbl_source = item_widget.findChild(QLabel, "recent_source")
+        if lbl_source is not None:
+            lbl_source.setText(source_text)
+            lbl_source.setStyleSheet(
+                f"color: {self._source_text_color()}; font-size: 11px; border: none; background: transparent;"
+            )
+
         lbl_amount = item_widget.findChild(QLabel, "recent_amount")
         if lbl_amount is not None:
             lbl_amount.setText(f"+{amount_ml} ml")
             lbl_amount.setStyleSheet(
-                f"color: {ThemeManager.color('accent')}; font-weight: bold; font-size: 14px; border: none;"
+                f"color: {ThemeManager.color('accent')}; font-weight: 700; font-size: 16px; border: none; background: transparent;"
             )
+
+        lbl_icon = item_widget.findChild(QLabel, "recent_icon")
+        if lbl_icon is not None:
+            lbl_icon.setStyleSheet(
+                f"color: {ThemeManager.color('accent')}; font-size: 14px; border: none; background: transparent;"
+            )
+
+        btn_delete = item_widget.findChild(QPushButton, "recent_delete_btn")
+        if btn_delete is not None:
+            btn_delete.setProperty("record_id", int(record_id))
+            btn_delete.setStyleSheet(self._recent_delete_button_stylesheet())
+
+    def _on_delete_record(self):
+        sender = self.sender()
+        if not isinstance(sender, QPushButton):
+            return
+        record_id = sender.property("record_id")
+        try:
+            intake_id = int(record_id)
+        except (TypeError, ValueError):
+            return
+        if intake_id <= 0:
+            return
+        self.intake_deleted.emit(intake_id)
+
+    def _on_clear_today(self):
+        reply = QMessageBox.question(
+            self,
+            "确认清空",
+            "确定要清空今日所有饮水记录吗？\n此操作不可撤销。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.today_cleared.emit()
         
     def update_next_reminder(self, time_str: str):
         self._next_reminder_time = time_str
@@ -252,11 +398,42 @@ class DashboardPage(QWidget):
         """
 
     def _recent_item_stylesheet(self) -> str:
+        accent_border = ThemeManager.qcolor('accent')
+        accent_border.setAlpha(110)
+        accent_border_color = accent_border.name(QColor.NameFormat.HexArgb)
         return f"""
-            QWidget {{
+            QWidget#recent_item_card {{
                 background-color: {ThemeManager.color('bg_card')};
-                border-radius: 10px;
+                border-radius: 12px;
                 border: 1px solid {ThemeManager.color('border_light')};
+                border-left: 3px solid {accent_border_color};
+            }}
+            QWidget#recent_item_card:hover {{
+                background-color: {ThemeManager.color('bg_hover')};
+            }}
+        """
+
+    @staticmethod
+    def _clear_button_stylesheet() -> str:
+        muted = ThemeManager.color('text_muted')
+        hover = ThemeManager.color('bg_hover')
+        pressed = ThemeManager.color('bg_selected')
+        return f"""
+            QPushButton {{
+                border: 1px solid {ThemeManager.color('border_light')};
+                background: transparent;
+                color: {muted};
+                font-size: 12px;
+                padding: 4px 12px;
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                color: #E53935;
+                border-color: #E53935;
+                background-color: rgba(229, 57, 53, 0.06);
+            }}
+            QPushButton:pressed {{
+                background-color: rgba(229, 57, 53, 0.12);
             }}
         """
 
@@ -277,5 +454,7 @@ class DashboardPage(QWidget):
         button_style = self._quick_add_button_stylesheet()
         for btn in self.quick_add_buttons:
             btn.setStyleSheet(button_style)
+
+        self.btn_clear_today.setStyleSheet(self._clear_button_stylesheet())
 
         self.update_recent(self._last_records)
