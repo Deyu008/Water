@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import datetime
 import logging
 import os
 import sys
@@ -10,11 +11,18 @@ from pathlib import Path
 from typing import cast
 
 from PySide6.QtCore import Signal
-from PySide6.QtGui import QCloseEvent, QColor, QFont, QFontDatabase, QLinearGradient, QPainter, QPainterPath, QPixmap, QRadialGradient
+from PySide6.QtGui import QCloseEvent, QColor, QFont, QFontDatabase, QIcon, QLinearGradient, QPainter, QPainterPath, QPixmap, QRadialGradient
 from PySide6.QtWidgets import QApplication, QLabel, QSplashScreen, QWidget
+
+try:
+    from PySide6.QtNetwork import QLocalServer, QLocalSocket
+except Exception:
+    QLocalServer = None
+    QLocalSocket = None
 
 from app.config import AppConfig
 from app.core.autostart import AutoStartManager
+from app.core.paths import get_resource_path
 from app.core.reminder import ReminderEngine
 from app.core.sound import SoundManager
 from app.core.theme import ThemeManager
@@ -23,6 +31,7 @@ from app.database import Database
 from app.main_window import MainWindow
 from app.widgets.toast_reminder import ToastReminder
 from app.widgets.screen_shake import ScreenShakeReminder
+from app.widgets.celebration_overlay import CelebrationOverlay
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +42,8 @@ except Exception:
 
     class DashboardPage(QWidget):
         water_added = Signal(int)
+        intake_deleted = Signal(int)
+        today_cleared = Signal()
 
         def __init__(self, parent=None):
             super().__init__(parent)
@@ -82,10 +93,13 @@ except Exception:
     class SettingsPage(QWidget):
         interval_changed = Signal(int)
         goal_changed = Signal(int)
+        reminder_start_time_changed = Signal(str)
+        reminder_end_time_changed = Signal(str)
         theme_changed = Signal(str)
         sound_changed = Signal(bool)
         autostart_changed = Signal(bool)
         shake_changed = Signal(bool)
+        test_reminder_requested = Signal()
 
         def __init__(self, parent=None):
             super().__init__(parent)
@@ -115,10 +129,19 @@ class WaterApp:
         self.tray: TrayManager | None = None
         self.toast: ToastReminder | None = None
         self._shake_overlay: ScreenShakeReminder | None = None
+        self._celebration: CelebrationOverlay | None = None
         self._splash: QSplashScreen | None = None
+        self._app_icon: QIcon | None = None
+        self._goal_celebrated_today: bool = False
+        self._last_celebration_date: datetime.date | None = None
+        self._local_server = None
 
     def run(self) -> int:
         self._prepare_runtime()
+        if not self.smoke_test:
+            if not self._ensure_single_instance():
+                return 0
+
         self._show_splash()
         self._create_core_objects()
         self._wire_signals()
@@ -140,6 +163,7 @@ class WaterApp:
         self._set_windows_app_user_model_id()
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
+        self._apply_app_icon()
 
         self.config = AppConfig.load()
         ThemeManager.apply(self.app, self.config.theme)
@@ -227,6 +251,8 @@ class WaterApp:
 
         self.db = Database()
         self.main_window = MainWindow()
+        if self._app_icon is not None and not self._app_icon.isNull():
+            self.main_window.setWindowIcon(self._app_icon)
         self.dashboard_page = DashboardPage(self.main_window)
         self.history_page = HistoryPage(self.main_window)
         self.settings_page = SettingsPage(self.main_window)
@@ -266,6 +292,8 @@ class WaterApp:
         assert self.tray is not None
 
         self.dashboard_page.water_added.connect(lambda amount: self._add_intake_and_refresh(amount, "button"))
+        self.dashboard_page.intake_deleted.connect(self._delete_intake_and_refresh)
+        self.dashboard_page.today_cleared.connect(self._clear_today_and_refresh)
 
         self.engine.remind_triggered.connect(self._on_reminder_triggered)
         self.engine.next_due_changed.connect(self.dashboard_page.update_next_reminder)
@@ -279,10 +307,13 @@ class WaterApp:
 
         self.settings_page.interval_changed.connect(self._on_interval_changed)
         self.settings_page.goal_changed.connect(self._on_goal_changed)
+        self.settings_page.reminder_start_time_changed.connect(self._on_start_time_changed)
+        self.settings_page.reminder_end_time_changed.connect(self._on_end_time_changed)
         self.settings_page.theme_changed.connect(self._on_theme_changed)
         self.settings_page.sound_changed.connect(self._on_sound_changed)
         self.settings_page.autostart_changed.connect(self._on_autostart_changed)
         self.settings_page.shake_changed.connect(self._on_shake_changed)
+        self.settings_page.test_reminder_requested.connect(self._on_test_reminder)
 
         self.history_page.period_changed.connect(self.refresh_history)
 
@@ -311,6 +342,8 @@ class WaterApp:
                 "sound_enabled": self.config.sound_enabled,
                 "autostart_enabled": self.config.autostart_enabled,
                 "shake_reminder_enabled": self.config.shake_reminder_enabled,
+                "reminder_start_time": self.config.reminder_start_time,
+                "reminder_end_time": self.config.reminder_end_time,
             }
         )
 
@@ -327,11 +360,91 @@ class WaterApp:
         except Exception:
             return
 
+    def _apply_app_icon(self) -> None:
+        if self.app is None:
+            return
+
+        candidates = [
+            get_resource_path("app/resources/icons/water_drop_tray.ico"),
+            get_resource_path("app/resources/icons/water_drop_tray.png"),
+        ]
+        for icon_path in candidates:
+            if not icon_path.exists():
+                continue
+
+            icon = QIcon(str(icon_path))
+            if icon.isNull():
+                continue
+
+            self._app_icon = icon
+            self.app.setWindowIcon(icon)
+            return
+
     def _on_reminder_triggered(self) -> None:
+        today = datetime.date.today()
+        if not hasattr(self, "_last_celebration_date") or self._last_celebration_date != today:
+            self._goal_celebrated_today = False
+            self._last_celebration_date = today
+
+        if self.db is not None and self.config is not None:
+            if self.db.get_today_total() >= self.config.daily_goal_ml:
+                return
+
+        now = datetime.datetime.now()
+        current_minutes = now.hour * 60 + now.minute
+        if self.config is not None:
+            start_minutes = self._parse_time_minutes(self.config.reminder_start_time, 8 * 60)
+            end_minutes = self._parse_time_minutes(self.config.reminder_end_time, 22 * 60)
+            if start_minutes <= end_minutes:
+                if current_minutes < start_minutes or current_minutes >= end_minutes:
+                    return
+            else:
+                if current_minutes < start_minutes and current_minutes >= end_minutes:
+                    return
+
         assert self.sound is not None
         self._show_toast_reminder()
         self._show_shake_if_enabled()
         self.sound.play_reminder()
+
+    @staticmethod
+    def _parse_time_minutes(time_str: str, default: int) -> int:
+        try:
+            parts = time_str.split(":")
+            return int(parts[0]) * 60 + int(parts[1])
+        except (ValueError, IndexError):
+            return default
+
+    def _on_test_reminder(self) -> None:
+        assert self.sound is not None
+        self._show_toast_reminder()
+        self._show_shake_if_enabled()
+        self.sound.play_reminder()
+
+    def _show_goal_celebration(self) -> None:
+        if self.tray is not None:
+            self.tray.show_notification(
+                "\U0001f389 \u606d\u559c\u5c0f\u8303\u8001\u5e08\uff01",
+                "\u4eca\u65e5\u996e\u6c34\u76ee\u6807\u5df2\u8fbe\u6210\uff01\u7ee7\u7eed\u4fdd\u6301\u54e6~ \U0001f4a7",
+            )
+        if self.dashboard_page is not None:
+            self.dashboard_page.update_next_reminder("\U0001f389 \u4eca\u65e5\u76ee\u6807\u5df2\u8fbe\u6210")
+        self._show_celebration_overlay()
+
+    def _show_celebration_overlay(self) -> None:
+        if self._celebration is not None:
+            self._celebration.close()
+            self._celebration.deleteLater()
+            self._celebration = None
+
+        self._celebration = CelebrationOverlay()
+        self._celebration.dismissed.connect(self._on_celebration_dismissed)
+        self._celebration.show_celebration()
+
+    def _on_celebration_dismissed(self) -> None:
+        if self._celebration is not None:
+            self._celebration.deleteLater()
+            self._celebration = None
 
     def _show_toast_reminder(self) -> None:
         if self.toast is not None:
@@ -401,6 +514,30 @@ class WaterApp:
             return
 
         self.db.add_intake(amount_value, source=source)
+        today_total = self.db.get_today_total()
+        if self.config is not None and today_total >= self.config.daily_goal_ml:
+            if not self._goal_celebrated_today:
+                self._goal_celebrated_today = True
+                self._last_celebration_date = datetime.date.today()
+                self._show_goal_celebration()
+
+        self.refresh_dashboard()
+        if self._current_page_index() == 1:
+            self.refresh_history(self._current_history_period())
+
+    def _delete_intake_and_refresh(self, intake_id: int) -> None:
+        if self.db is None:
+            return
+        self.db.delete_intake(int(intake_id))
+        self.refresh_dashboard()
+        if self._current_page_index() == 1:
+            self.refresh_history(self._current_history_period())
+
+    def _clear_today_and_refresh(self) -> None:
+        if self.db is None:
+            return
+        self.db.clear_today()
+        self._goal_celebrated_today = False
         self.refresh_dashboard()
         if self._current_page_index() == 1:
             self.refresh_history(self._current_history_period())
@@ -442,6 +579,16 @@ class WaterApp:
         self.refresh_dashboard()
         if self._current_page_index() == 1:
             self.refresh_history(self._current_history_period())
+
+    def _on_start_time_changed(self, time_str: str) -> None:
+        if self.config is not None:
+            self.config.reminder_start_time = time_str
+            self.config.save()
+
+    def _on_end_time_changed(self, time_str: str) -> None:
+        if self.config is not None:
+            self.config.reminder_end_time = time_str
+            self.config.save()
 
     def _on_theme_changed(self, theme_name: str) -> None:
         if self.app is not None:
@@ -505,6 +652,8 @@ class WaterApp:
                 "sound_enabled": self.config.sound_enabled,
                 "autostart_enabled": self.config.autostart_enabled,
                 "shake_reminder_enabled": self.config.shake_reminder_enabled,
+                "reminder_start_time": self.config.reminder_start_time,
+                "reminder_end_time": self.config.reminder_end_time,
             }
         )
 
@@ -580,6 +729,47 @@ class WaterApp:
         self.main_window.raise_()
         self.main_window.activateWindow()
 
+    def _ensure_single_instance(self) -> bool:
+        if QLocalServer is None or QLocalSocket is None:
+            logger.warning("QtNetwork unavailable, single-instance check skipped")
+            return True
+
+        server_name = "WaterReminder_SingleInstance"
+
+        socket = QLocalSocket()
+        socket.connectToServer(server_name)
+        if socket.waitForConnected(500):
+            socket.write(b"show")
+            socket.waitForBytesWritten(1000)
+            socket.disconnectFromServer()
+            return False
+
+        QLocalServer.removeServer(server_name)
+
+        assert self.app is not None
+        local_server = QLocalServer(self.app)
+        self._local_server = local_server
+        local_server.newConnection.connect(self._on_new_instance_connection)
+        if not local_server.listen(server_name):
+            logger.warning("Failed to start local server: %s", local_server.errorString())
+        return True
+
+    def _on_new_instance_connection(self) -> None:
+        if self._local_server is None:
+            return
+
+        client = self._local_server.nextPendingConnection()
+        if client is None:
+            return
+
+        client.waitForReadyRead(1000)
+        data = client.readAll().toStdString().encode("utf-8")
+        client.disconnectFromServer()
+        client.deleteLater()
+
+        if data == b"show":
+            self.show_main_window()
+
     def shutdown(self) -> None:
         if self._is_quitting:
             return
@@ -595,6 +785,11 @@ class WaterApp:
             self._shake_overlay.deleteLater()
             self._shake_overlay = None
 
+        if self._celebration is not None:
+            self._celebration.close()
+            self._celebration.deleteLater()
+            self._celebration = None
+
         if self.toast is not None:
             self.toast.close()
             self.toast.deleteLater()
@@ -608,6 +803,10 @@ class WaterApp:
 
         if self.db is not None:
             self.db.close()
+
+        if self._local_server is not None:
+            self._local_server.close()
+            self._local_server = None
 
         if self.app is not None:
             self.app.quit()
