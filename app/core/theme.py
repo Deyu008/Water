@@ -84,25 +84,25 @@ _LIGHT: dict[str, str] = {
     "toggle_text": "#616161",
     "toggle_checked_text": "#6BB8D9",
     # Toast
-    "toast_bg_start": "rgba(28, 47, 85, 225)",
-    "toast_bg_end": "rgba(20, 30, 54, 225)",
-    "toast_border": "rgba(255, 255, 255, 36)",
-    "toast_title": "#F5FAFF",
-    "toast_body": "rgba(219, 230, 246, 230)",
-    "toast_btn_bg": "rgba(88, 166, 200, 230)",
-    "toast_btn_hover": "rgba(100, 178, 212, 245)",
-    "toast_btn_pressed": "rgba(72, 149, 183, 255)",
-    "toast_later_bg": "rgba(255, 255, 255, 45)",
-    "toast_later_text": "rgba(255, 255, 255, 220)",
-    "toast_later_border": "rgba(255, 255, 255, 60)",
-    "toast_later_hover": "rgba(255, 255, 255, 70)",
-    "toast_later_pressed": "rgba(255, 255, 255, 85)",
+    "toast_bg_start": "rgba(255, 255, 255, 245)",
+    "toast_bg_end": "rgba(234, 246, 252, 245)",
+    "toast_border": "rgba(107, 184, 217, 0.25)",
+    "toast_title": "#2C5F7A",
+    "toast_body": "rgba(74, 140, 181, 0.85)",
+    "toast_btn_bg": "rgba(107, 184, 217, 0.9)",
+    "toast_btn_hover": "rgba(88, 166, 200, 1.0)",
+    "toast_btn_pressed": "rgba(72, 149, 183, 1.0)",
+    "toast_later_bg": "rgba(107, 184, 217, 0.08)",
+    "toast_later_text": "rgba(74, 140, 181, 0.7)",
+    "toast_later_border": "rgba(107, 184, 217, 0.2)",
+    "toast_later_hover": "rgba(107, 184, 217, 0.15)",
+    "toast_later_pressed": "rgba(107, 184, 217, 0.22)",
     # Shake overlay (qcolor tokens use #AARRGGBB for reliable QColor parsing)
     "shake_overlay_bg": "#8C000000",
     "shake_title": "#F0FFFFFF",
     "shake_subtitle": "#B4C8DCFF",
-    "shake_drop_start": "#FF7AD6FF",
-    "shake_drop_end": "#FF399AF5",
+    "shake_drop_start": "#FF82CCE6",
+    "shake_drop_end": "#FF6BB8D9",
     "shake_drop_outline": "#64FFFFFF",
     "shake_drop_highlight": "#5AFFFFFF",
     "shake_btn_bg": "rgba(88, 166, 200, 230)",
@@ -307,8 +307,21 @@ class ThemeManager:
 
     @staticmethod
     def qcolor(token: str) -> QColor:
-        """Get a QColor for a token."""
-        return QColor(ThemeManager.color(token))
+        """Get a QColor for a token. Handles #hex and CSS rgba() formats."""
+        raw = ThemeManager.color(token)
+        c = QColor(raw)
+        if c.isValid():
+            return c
+        # QColor can't parse CSS rgba() — do it manually
+        import re
+        m = re.match(r'rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)', raw)
+        if m:
+            r, g, b = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            a_raw = float(m.group(4))
+            # Alpha: if >1.0, treat as 0-255 integer; else treat as 0.0-1.0 fraction
+            a = int(a_raw) if a_raw > 1.0 else int(a_raw * 255)
+            return QColor(r, g, b, min(255, max(0, a)))
+        return QColor()  # fallback invalid
 
     @staticmethod
     def font_family() -> str:

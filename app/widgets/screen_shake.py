@@ -249,18 +249,27 @@ class ScreenShakeReminder(QWidget):
 
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-
         # Paint in logical coordinates (pixmap handles DPR scaling)
         pw = int(40 * s)
         ph = int(44 * s)
         cx = pw // 2
         cy = ph // 2
-        path = QPainterPath()
-        path.moveTo(cx, cy - 20 * s)
-        path.cubicTo(cx - 18 * s, cy - 2 * s, cx - 16 * s, cy + 12 * s, cx, cy + 22 * s)
-        path.cubicTo(cx + 16 * s, cy + 12 * s, cx + 18 * s, cy - 2 * s, cx, cy - 20 * s)
 
-        gradient = QLinearGradient(cx, cy - 20 * s, cx, cy + 22 * s)
+        # Classic teardrop bezier shape
+        tip_y = cy - 22 * s
+        center_y = cy + 2 * s
+        r = 12.5 * s
+        k = 0.5522847498 * r
+
+        path = QPainterPath()
+        path.moveTo(cx, tip_y)
+        path.cubicTo(cx - 2 * s, tip_y + 8 * s, cx - r - 1.5 * s, center_y - 4 * s, cx - r, center_y)
+        path.cubicTo(cx - r, center_y + k, cx - k, center_y + r, cx, center_y + r)
+        path.cubicTo(cx + k, center_y + r, cx + r, center_y + k, cx + r, center_y)
+        path.cubicTo(cx + r + 1.5 * s, center_y - 4 * s, cx + 2 * s, tip_y + 8 * s, cx, tip_y)
+        path.closeSubpath()
+
+        gradient = QLinearGradient(cx, tip_y, cx, center_y + r)
         gradient.setColorAt(0.0, self._drop_start)
         gradient.setColorAt(1.0, self._drop_end)
 

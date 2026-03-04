@@ -222,27 +222,37 @@ class ToastReminder(QWidget):
         return QRect(x, y, self.width(), self.height())
 
     def _paint_drop_icon(self, painter: QPainter, center: QPoint):
+        """Paint a classic water drop icon at center."""
+        cx = float(center.x())
+        cy = float(center.y())
+        s = 0.85  # scale factor for toast icon size
+
+        # Classic teardrop bezier shape
+        tip_y = cy - 22 * s
+        center_y = cy + 2 * s
+        r = 12.5 * s
+        k = 0.5522847498 * r
+
         path = QPainterPath()
-        top = QPoint(center.x(), center.y() - 16)
-        left = QPoint(center.x() - 12, center.y() + 6)
-        right = QPoint(center.x() + 12, center.y() + 6)
-        bottom = QPoint(center.x(), center.y() + 18)
+        path.moveTo(cx, tip_y)
+        path.cubicTo(cx - 2 * s, tip_y + 8 * s, cx - r - 1.5 * s, center_y - 4 * s, cx - r, center_y)
+        path.cubicTo(cx - r, center_y + k, cx - k, center_y + r, cx, center_y + r)
+        path.cubicTo(cx + k, center_y + r, cx + r, center_y + k, cx + r, center_y)
+        path.cubicTo(cx + r + 1.5 * s, center_y - 4 * s, cx + 2 * s, tip_y + 8 * s, cx, tip_y)
+        path.closeSubpath()
 
-        path.moveTo(top)
-        path.cubicTo(center.x() - 16, center.y() - 4, center.x() - 14, center.y() + 10, bottom.x(), bottom.y())
-        path.cubicTo(center.x() + 14, center.y() + 10, center.x() + 16, center.y() - 4, right.x(), right.y())
-        path.cubicTo(center.x() + 8, center.y() - 6, center.x() + 2, center.y() - 12, top.x(), top.y())
+        # Soft blue gradient (matching app theme)
+        from PySide6.QtGui import QRadialGradient as _RG
+        gradient = _RG(cx - 3, cy - 5, 22 * s)
+        gradient.setColorAt(0.0, QColor(130, 204, 230, 255))  # #82CCE6
+        gradient.setColorAt(1.0, QColor(107, 184, 217, 255))  # #6BB8D9
 
-        gradient = QLinearGradient(top, bottom)
-        gradient.setColorAt(0.0, QColor(142, 210, 240, 255))
-        gradient.setColorAt(1.0, QColor(88, 166, 200, 255))
-
-        painter.setPen(QPen(QColor(255, 255, 255, 140), 1))
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(gradient)
         painter.drawPath(path)
 
+        # Specular highlight
         highlight = QPainterPath()
-        highlight.addEllipse(QPoint(center.x() - 4, center.y() - 1), 4, 6)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(255, 255, 255, 110))
+        highlight.addEllipse(QPoint(int(cx - 3 * s), int(cy - 1 * s)), int(3 * s), int(5 * s))
+        painter.setBrush(QColor(255, 255, 255, 100))
         painter.drawPath(highlight)
