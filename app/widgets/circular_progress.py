@@ -1,17 +1,13 @@
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QRectF, QPointF
-from PySide6.QtGui import QPainter, QColor, QPen, QFont, QConicalGradient, QBrush, QFontMetrics
+from PySide6.QtGui import (QPainter, QColor, QPen, QFont, QConicalGradient, QBrush,
+                           QFontMetrics, QRadialGradient, QLinearGradient)
 
 from app.core.theme import ThemeManager
 
 class CircularProgress(QWidget):
     """
-    Custom circular progress widget with smooth animation.
-
-    Visual Design:
-    - Outer ring: thin track (background, gray/light)
-    - Inner ring: progress arc (gradient from #2196F3 to #64B5F6, blue spectrum)
-    - Center: large text showing current/goal
+    Custom circular progress widget with liquid glass background disc.
     """
 
     def __init__(self, parent=None):
@@ -30,6 +26,9 @@ class CircularProgress(QWidget):
         self._progress_end_color = QColor()
         self._text_color = QColor()
         self._subtext_color = QColor()
+        self._glass_fill = QColor()
+        self._glass_border = QColor()
+        self._glass_highlight = QColor()
 
         self._ring_width = 16
 
@@ -59,6 +58,9 @@ class CircularProgress(QWidget):
         self._progress_end_color = ThemeManager.qcolor("progress_end")
         self._text_color = ThemeManager.qcolor("progress_text")
         self._subtext_color = ThemeManager.qcolor("progress_subtext")
+        self._glass_fill = ThemeManager.qcolor("glass_fill")
+        self._glass_border = ThemeManager.qcolor("glass_border")
+        self._glass_highlight = ThemeManager.qcolor("glass_highlight")
         self._cached_side = 0  # force rebuild
         self.update()
 
@@ -120,6 +122,32 @@ class CircularProgress(QWidget):
         center_y = height / 2
         radius = (side - self._ring_width) / 2 - 10
         rect = QRectF(center_x - radius, center_y - radius, radius * 2, radius * 2)
+
+        # 0. Glass disc background behind progress ring
+        glass_radius = radius + self._ring_width / 2 + 6
+        glass_rect = QRectF(
+            center_x - glass_radius, center_y - glass_radius,
+            glass_radius * 2, glass_radius * 2,
+        )
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(self._glass_fill))
+        painter.drawEllipse(glass_rect)
+
+        # Specular highlight on glass disc (top region)
+        highlight_grad = QRadialGradient(
+            center_x, center_y - glass_radius * 0.35,
+            glass_radius * 1.1,
+        )
+        highlight_grad.setColorAt(0.0, self._glass_highlight)
+        highlight_grad.setColorAt(1.0, QColor(255, 255, 255, 0))
+        painter.setBrush(QBrush(highlight_grad))
+        painter.drawEllipse(glass_rect)
+
+        # Glass disc border
+        glass_border_pen = QPen(self._glass_border, 1.0)
+        painter.setPen(glass_border_pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(glass_rect)
 
         # 1. Draw track ring (use cached pen, update color in case theme changed)
         self._track_pen.setColor(self._track_color)

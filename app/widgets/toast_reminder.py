@@ -132,8 +132,9 @@ class ToastReminder(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         rect = self.rect().adjusted(8, 8, -8, -8)
-        radius = 18
+        radius = 20
 
+        # Glass background gradient
         gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
         gradient.setColorAt(0.0, ThemeManager.qcolor("toast_bg_start"))
         gradient.setColorAt(1.0, ThemeManager.qcolor("toast_bg_end"))
@@ -142,6 +143,26 @@ class ToastReminder(QWidget):
         painter.setBrush(gradient)
         painter.drawRoundedRect(rect, radius, radius)
 
+        # Glass specular highlight (top portion)
+        highlight_color = ThemeManager.qcolor("glass_highlight")
+        from PySide6.QtCore import QPointF as _QPointF
+        highlight_grad = QLinearGradient(
+            _QPointF(rect.left(), rect.top()),
+            _QPointF(rect.left(), rect.top() + rect.height() * 0.4),
+        )
+        highlight_grad.setColorAt(0.0, highlight_color)
+        highlight_grad.setColorAt(1.0, QColor(255, 255, 255, 0))
+
+        painter.setBrush(highlight_grad)
+        # Clip to top rounded area
+        full_path = QPainterPath()
+        full_path.addRoundedRect(rect, radius, radius)
+        top_rect = rect.adjusted(0, 0, 0, -rect.height() // 2)
+        top_path = QPainterPath()
+        top_path.addRoundedRect(top_rect, radius, radius)
+        painter.drawPath(full_path & top_path)
+
+        # Glass border
         border_pen = QPen(ThemeManager.qcolor("toast_border"), 1)
         painter.setPen(border_pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)

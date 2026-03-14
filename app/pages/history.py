@@ -30,20 +30,22 @@ class StatsCard(QFrame):
         self.value_lbl.setText(str(value))
 
     def apply_theme(self):
+        glass_fill = ThemeManager.color('glass_fill')
+        glass_border = ThemeManager.color('glass_border')
         self.setStyleSheet(
             f"""
             QFrame {{
-                background-color: {ThemeManager.color('bg_card')};
-                border: 1px solid {ThemeManager.color('border')};
-                border-radius: 12px;
+                background-color: {glass_fill};
+                border: 1px solid {glass_border};
+                border-radius: 14px;
             }}
             """
         )
         self.title_lbl.setStyleSheet(
-            f"color: {ThemeManager.color('text_muted')}; font-size: 12px; font-weight: 600; border: none;"
+            f"color: {ThemeManager.color('text_muted')}; font-size: 12px; font-weight: 600; border: none; background: transparent;"
         )
         self.value_lbl.setStyleSheet(
-            f"color: {ThemeManager.color('accent')}; font-size: 18px; font-weight: bold; border: none;"
+            f"color: {ThemeManager.color('accent')}; font-size: 18px; font-weight: bold; border: none; background: transparent;"
         )
 
 
@@ -56,7 +58,7 @@ class HistoryPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("historyPage")
-        self.setStyleSheet(f"background-color: {ThemeManager.color('bg_primary')};")
+        self.setStyleSheet("background-color: transparent;")
         
         # Main Layout
         self.main_layout = QVBoxLayout(self)
@@ -150,6 +152,7 @@ class HistoryPage(QWidget):
         return f"""
             QFrame {{
                 background-color: {ThemeManager.color('toggle_bg')};
+                border: 1px solid {ThemeManager.color('glass_border')};
                 border-radius: 16px;
                 padding: 2px;
             }}
@@ -168,6 +171,7 @@ class HistoryPage(QWidget):
                 background-color: {ThemeManager.color('toggle_checked_bg')};
                 color: {ThemeManager.color('toggle_checked_text')};
                 font-weight: bold;
+                border: 0.5px solid {ThemeManager.color('glass_border')};
             }}
             QPushButton:hover:!checked {{
                 background-color: {ThemeManager.color('toggle_checked_bg')};
@@ -177,9 +181,9 @@ class HistoryPage(QWidget):
     def _chart_container_stylesheet(self) -> str:
         return f"""
             QFrame {{
-                background-color: {ThemeManager.color('bg_card')};
-                border-radius: 16px;
-                border: 1px solid {ThemeManager.color('border')};
+                background-color: {ThemeManager.color('glass_fill')};
+                border-radius: 18px;
+                border: 1px solid {ThemeManager.color('glass_border')};
             }}
         """
 
@@ -311,7 +315,7 @@ class HistoryPage(QWidget):
         self.goal_series.setPen(goal_pen)
 
     def apply_theme(self, *_args):
-        self.setStyleSheet(f"background-color: {ThemeManager.color('bg_primary')};")
+        self.setStyleSheet("background-color: transparent;")
         self.title_lbl.setStyleSheet(
             f"font-size: 24px; font-weight: bold; color: {ThemeManager.color('text_primary')};"
         )

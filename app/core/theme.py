@@ -20,83 +20,92 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 _LIGHT: dict[str, str] = {
-    # Backgrounds
-    "bg_primary": "#FAFAFA",
-    "bg_secondary": "#FFFFFF",
-    "bg_sidebar": "#F5F5F5",
-    "bg_card": "#FFFFFF",
-    "bg_hover": "rgba(0, 0, 0, 0.04)",
-    "bg_selected": "rgba(33, 150, 243, 0.08)",
-    "bg_input": "#FFFFFF",
-    "bg_tooltip": "#333333",
-    # Borders
-    "border": "#E0E0E0",
-    "border_light": "#EEEEEE",
+    # Backgrounds (glass: translucent layers over light gradient backdrop)
+    "bg_primary": "rgba(245, 248, 252, 200)",
+    "bg_secondary": "rgba(255, 255, 255, 180)",
+    "bg_sidebar": "rgba(240, 246, 252, 160)",
+    "bg_card": "rgba(255, 255, 255, 140)",
+    "bg_hover": "rgba(255, 255, 255, 100)",
+    "bg_selected": "rgba(107, 184, 217, 0.12)",
+    "bg_input": "rgba(255, 255, 255, 180)",
+    "bg_tooltip": "rgba(40, 40, 50, 220)",
+    # Glass-specific tokens
+    "glass_fill": "rgba(255, 255, 255, 105)",
+    "glass_fill_heavy": "rgba(255, 255, 255, 155)",
+    "glass_border": "rgba(255, 255, 255, 140)",
+    "glass_border_accent": "rgba(107, 184, 217, 0.30)",
+    "glass_highlight": "rgba(255, 255, 255, 70)",
+    "glass_shadow": "rgba(0, 0, 0, 0.08)",
+    "glass_backdrop_start": "#E8F0FA",
+    "glass_backdrop_end": "#D6E8F8",
+    # Borders (softer for glass)
+    "border": "rgba(200, 215, 230, 0.50)",
+    "border_light": "rgba(200, 215, 230, 0.30)",
     # Text
-    "text_primary": "#212121",
-    "text_secondary": "#424242",
-    "text_muted": "#757575",
-    "text_disabled": "#9E9E9E",
+    "text_primary": "#1A2B3C",
+    "text_secondary": "#3A4B5C",
+    "text_muted": "#6B7B8C",
+    "text_disabled": "#9EAAB6",
     "text_on_accent": "#FFFFFF",
     # Accent
-    "accent": "#6BB8D9",
-    "accent_light": "#E8F4FB",
-    "accent_hover": "#58A6C8",
-    "accent_pressed": "#4895B7",
-    # Quick-add buttons (Dashboard)
-    "btn_pill_bg": "#E8F4FB",
-    "btn_pill_text": "#58A6C8",
-    "btn_pill_hover": "#D1EAF5",
-    "btn_pill_pressed": "#BAE0EF",
-    # Title bar
-    "titlebar_bg": "#FAFAFA",
-    "titlebar_border": "#E0E0E0",
-    "titlebar_text": "#333333",
-    "titlebar_btn_hover": "#E5E5E5",
-    "titlebar_btn_pressed": "#CACACB",
-    "titlebar_btn_text": "#555555",
-    "titlebar_close_hover": "#E81123",
+    "accent": "#5BADD0",
+    "accent_light": "rgba(91, 173, 208, 0.15)",
+    "accent_hover": "#4A9CC0",
+    "accent_pressed": "#3D8BB0",
+    # Quick-add buttons (Dashboard) — glass pill buttons
+    "btn_pill_bg": "rgba(91, 173, 208, 0.14)",
+    "btn_pill_text": "#4A9CC0",
+    "btn_pill_hover": "rgba(91, 173, 208, 0.24)",
+    "btn_pill_pressed": "rgba(91, 173, 208, 0.36)",
+    # Title bar (glass)
+    "titlebar_bg": "rgba(240, 246, 252, 120)",
+    "titlebar_border": "rgba(200, 215, 230, 0.35)",
+    "titlebar_text": "#2A3B4C",
+    "titlebar_btn_hover": "rgba(255, 255, 255, 120)",
+    "titlebar_btn_pressed": "rgba(200, 215, 230, 0.45)",
+    "titlebar_btn_text": "#4A5B6C",
+    "titlebar_close_hover": "rgba(232, 17, 35, 0.85)",
     "titlebar_close_pressed": "#F1707A",
-    # Sidebar
-    "sidebar_bg": "#F5F5F5",
-    "sidebar_border": "#E0E0E0",
-    "sidebar_hover": "#1A000000",
-    "sidebar_selected": "#246BB8D9",
-    "sidebar_text": "#212121",
-    "sidebar_text_selected": "#6BB8D9",
-    "sidebar_icon_default": "#646464",
-    "sidebar_version": "#999999",
+    # Sidebar (glass)
+    "sidebar_bg": "rgba(235, 242, 250, 140)",
+    "sidebar_border": "rgba(200, 215, 230, 0.35)",
+    "sidebar_hover": "rgba(255, 255, 255, 90)",
+    "sidebar_selected": "rgba(91, 173, 208, 0.16)",
+    "sidebar_text": "#2A3B4C",
+    "sidebar_text_selected": "#4A9CC0",
+    "sidebar_icon_default": "#6B7B8C",
+    "sidebar_version": "#9EAAB6",
     # Chart
-    "chart_bar_start": "#9DD0E8",
-    "chart_bar_end": "#6BB8D9",
-    "chart_grid": "#F0F0F0",
-    "chart_goal": "#FF9800",
-    "chart_axis_text": "#757575",
+    "chart_bar_start": "#8DCAE6",
+    "chart_bar_end": "#5BADD0",
+    "chart_grid": "rgba(200, 215, 230, 0.40)",
+    "chart_goal": "#E89840",
+    "chart_axis_text": "#6B7B8C",
     # Progress ring
-    "progress_track": "#F0F0F0",
-    "progress_start": "#6BB8D9",
-    "progress_end": "#9DD0E8",
-    "progress_text": "#212121",
-    "progress_subtext": "#757575",
+    "progress_track": "rgba(200, 215, 230, 0.35)",
+    "progress_start": "#5BADD0",
+    "progress_end": "#8DCAE6",
+    "progress_text": "#1A2B3C",
+    "progress_subtext": "#6B7B8C",
     # Toggle button (History page)
-    "toggle_bg": "#E0E0E0",
-    "toggle_checked_bg": "#FFFFFF",
-    "toggle_text": "#616161",
-    "toggle_checked_text": "#6BB8D9",
-    # Toast
-    "toast_bg_start": "rgba(255, 255, 255, 245)",
-    "toast_bg_end": "rgba(234, 246, 252, 245)",
-    "toast_border": "rgba(107, 184, 217, 0.25)",
-    "toast_title": "#2C5F7A",
-    "toast_body": "rgba(74, 140, 181, 0.85)",
-    "toast_btn_bg": "rgba(107, 184, 217, 0.9)",
-    "toast_btn_hover": "rgba(88, 166, 200, 1.0)",
-    "toast_btn_pressed": "rgba(72, 149, 183, 1.0)",
-    "toast_later_bg": "rgba(107, 184, 217, 0.08)",
-    "toast_later_text": "rgba(74, 140, 181, 0.7)",
-    "toast_later_border": "rgba(107, 184, 217, 0.2)",
-    "toast_later_hover": "rgba(107, 184, 217, 0.15)",
-    "toast_later_pressed": "rgba(107, 184, 217, 0.22)",
+    "toggle_bg": "rgba(200, 215, 230, 0.35)",
+    "toggle_checked_bg": "rgba(255, 255, 255, 160)",
+    "toggle_text": "#6B7B8C",
+    "toggle_checked_text": "#4A9CC0",
+    # Toast (glass)
+    "toast_bg_start": "rgba(255, 255, 255, 200)",
+    "toast_bg_end": "rgba(230, 244, 252, 200)",
+    "toast_border": "rgba(91, 173, 208, 0.25)",
+    "toast_title": "#2A4B6C",
+    "toast_body": "rgba(60, 120, 165, 0.85)",
+    "toast_btn_bg": "rgba(91, 173, 208, 0.85)",
+    "toast_btn_hover": "rgba(74, 156, 192, 1.0)",
+    "toast_btn_pressed": "rgba(61, 139, 176, 1.0)",
+    "toast_later_bg": "rgba(91, 173, 208, 0.10)",
+    "toast_later_text": "rgba(60, 120, 165, 0.75)",
+    "toast_later_border": "rgba(91, 173, 208, 0.22)",
+    "toast_later_hover": "rgba(91, 173, 208, 0.18)",
+    "toast_later_pressed": "rgba(91, 173, 208, 0.28)",
     # Shake overlay (qcolor tokens use #AARRGGBB for reliable QColor parsing)
     "shake_overlay_bg": "#8C000000",
     "shake_title": "#F0FFFFFF",
@@ -116,83 +125,92 @@ _LIGHT: dict[str, str] = {
 }
 
 _DARK: dict[str, str] = {
-    # Backgrounds
-    "bg_primary": "#121826",
-    "bg_secondary": "#1B2338",
-    "bg_sidebar": "#0E1420",
-    "bg_card": "#1E283A",
-    "bg_hover": "rgba(255, 255, 255, 0.06)",
-    "bg_selected": "rgba(100, 181, 246, 0.12)",
-    "bg_input": "#1E283A",
-    "bg_tooltip": "#E0E0E0",
-    # Borders
-    "border": "#2A3650",
-    "border_light": "#232E42",
+    # Backgrounds (glass: translucent layers over dark gradient backdrop)
+    "bg_primary": "rgba(14, 18, 30, 190)",
+    "bg_secondary": "rgba(24, 32, 50, 170)",
+    "bg_sidebar": "rgba(10, 14, 24, 160)",
+    "bg_card": "rgba(24, 32, 50, 140)",
+    "bg_hover": "rgba(255, 255, 255, 20)",
+    "bg_selected": "rgba(142, 202, 230, 0.14)",
+    "bg_input": "rgba(24, 32, 50, 180)",
+    "bg_tooltip": "rgba(220, 220, 220, 230)",
+    # Glass-specific tokens
+    "glass_fill": "rgba(20, 28, 46, 120)",
+    "glass_fill_heavy": "rgba(20, 28, 46, 170)",
+    "glass_border": "rgba(80, 110, 150, 0.30)",
+    "glass_border_accent": "rgba(142, 202, 230, 0.25)",
+    "glass_highlight": "rgba(255, 255, 255, 20)",
+    "glass_shadow": "rgba(0, 0, 0, 0.30)",
+    "glass_backdrop_start": "#0C1020",
+    "glass_backdrop_end": "#141C30",
+    # Borders (softer for glass)
+    "border": "rgba(60, 80, 110, 0.45)",
+    "border_light": "rgba(60, 80, 110, 0.25)",
     # Text
-    "text_primary": "#E4E8EE",
-    "text_secondary": "#BDC1C6",
-    "text_muted": "#8E9AAF",
-    "text_disabled": "#5F6B7A",
+    "text_primary": "#E0E6EE",
+    "text_secondary": "#B8C2D0",
+    "text_muted": "#7E8EA2",
+    "text_disabled": "#505C6E",
     "text_on_accent": "#FFFFFF",
     # Accent
     "accent": "#8ECAE6",
     "accent_light": "rgba(142, 202, 230, 0.15)",
     "accent_hover": "#A6D6EC",
     "accent_pressed": "#76BEE0",
-    # Quick-add buttons (Dashboard)
-    "btn_pill_bg": "rgba(142, 202, 230, 0.15)",
+    # Quick-add buttons (Dashboard) — glass pill buttons
+    "btn_pill_bg": "rgba(142, 202, 230, 0.14)",
     "btn_pill_text": "#A6D6EC",
-    "btn_pill_hover": "rgba(142, 202, 230, 0.25)",
-    "btn_pill_pressed": "rgba(142, 202, 230, 0.35)",
-    # Title bar
-    "titlebar_bg": "#0E1420",
-    "titlebar_border": "#2A3650",
-    "titlebar_text": "#E4E8EE",
-    "titlebar_btn_hover": "rgba(255, 255, 255, 0.08)",
-    "titlebar_btn_pressed": "rgba(255, 255, 255, 0.12)",
-    "titlebar_btn_text": "#BDC1C6",
-    "titlebar_close_hover": "#E81123",
+    "btn_pill_hover": "rgba(142, 202, 230, 0.26)",
+    "btn_pill_pressed": "rgba(142, 202, 230, 0.38)",
+    # Title bar (glass)
+    "titlebar_bg": "rgba(10, 14, 24, 130)",
+    "titlebar_border": "rgba(60, 80, 110, 0.30)",
+    "titlebar_text": "#E0E6EE",
+    "titlebar_btn_hover": "rgba(255, 255, 255, 25)",
+    "titlebar_btn_pressed": "rgba(255, 255, 255, 40)",
+    "titlebar_btn_text": "#B8C2D0",
+    "titlebar_close_hover": "rgba(232, 17, 35, 0.85)",
     "titlebar_close_pressed": "#F1707A",
-    # Sidebar
-    "sidebar_bg": "#0E1420",
-    "sidebar_border": "#2A3650",
-    "sidebar_hover": "#0FFFFFFF",
-    "sidebar_selected": "#1F8ECAE6",
-    "sidebar_text": "#E4E8EE",
+    # Sidebar (glass)
+    "sidebar_bg": "rgba(10, 14, 24, 140)",
+    "sidebar_border": "rgba(60, 80, 110, 0.30)",
+    "sidebar_hover": "rgba(255, 255, 255, 18)",
+    "sidebar_selected": "rgba(142, 202, 230, 0.14)",
+    "sidebar_text": "#E0E6EE",
     "sidebar_text_selected": "#8ECAE6",
-    "sidebar_icon_default": "#8E9AAF",
-    "sidebar_version": "#5F6B7A",
+    "sidebar_icon_default": "#7E8EA2",
+    "sidebar_version": "#505C6E",
     # Chart
     "chart_bar_start": "#8ECAE6",
     "chart_bar_end": "#76BEE0",
-    "chart_grid": "#2A3650",
+    "chart_grid": "rgba(60, 80, 110, 0.35)",
     "chart_goal": "#FFB74D",
-    "chart_axis_text": "#8E9AAF",
+    "chart_axis_text": "#7E8EA2",
     # Progress ring
-    "progress_track": "#2A3650",
+    "progress_track": "rgba(60, 80, 110, 0.30)",
     "progress_start": "#8ECAE6",
     "progress_end": "#A6D6EC",
-    "progress_text": "#E4E8EE",
-    "progress_subtext": "#8E9AAF",
+    "progress_text": "#E0E6EE",
+    "progress_subtext": "#7E8EA2",
     # Toggle button (History page)
-    "toggle_bg": "#2A3650",
-    "toggle_checked_bg": "#1E283A",
-    "toggle_text": "#8E9AAF",
+    "toggle_bg": "rgba(60, 80, 110, 0.30)",
+    "toggle_checked_bg": "rgba(24, 32, 50, 180)",
+    "toggle_text": "#7E8EA2",
     "toggle_checked_text": "#8ECAE6",
-    # Toast
-    "toast_bg_start": "rgba(18, 24, 38, 240)",
-    "toast_bg_end": "rgba(14, 20, 32, 240)",
-    "toast_border": "rgba(100, 181, 246, 0.15)",
-    "toast_title": "#E4E8EE",
-    "toast_body": "rgba(189, 193, 198, 230)",
-    "toast_btn_bg": "rgba(142, 202, 230, 0.8)",
-    "toast_btn_hover": "rgba(142, 202, 230, 0.9)",
+    # Toast (glass)
+    "toast_bg_start": "rgba(14, 18, 30, 220)",
+    "toast_bg_end": "rgba(10, 14, 24, 220)",
+    "toast_border": "rgba(100, 140, 180, 0.20)",
+    "toast_title": "#E0E6EE",
+    "toast_body": "rgba(184, 194, 208, 230)",
+    "toast_btn_bg": "rgba(142, 202, 230, 0.80)",
+    "toast_btn_hover": "rgba(142, 202, 230, 0.92)",
     "toast_btn_pressed": "rgba(118, 190, 224, 1.0)",
     "toast_later_bg": "rgba(255, 255, 255, 0.08)",
-    "toast_later_text": "rgba(228, 232, 238, 0.85)",
+    "toast_later_text": "rgba(224, 230, 238, 0.85)",
     "toast_later_border": "rgba(255, 255, 255, 0.12)",
-    "toast_later_hover": "rgba(255, 255, 255, 0.14)",
-    "toast_later_pressed": "rgba(255, 255, 255, 0.18)",
+    "toast_later_hover": "rgba(255, 255, 255, 0.16)",
+    "toast_later_pressed": "rgba(255, 255, 255, 0.22)",
     # Shake overlay (qcolor tokens use #AARRGGBB for reliable QColor parsing)
     "shake_overlay_bg": "#B4000000",
     "shake_title": "#F5E4E8EE",
@@ -421,18 +439,18 @@ class ThemeManager:
             return c.get(token, "#FF00FF")
 
         return f"""
-/* === Water Reminder Theme Overrides === */
+/* === Water Reminder Theme Overrides — Liquid Glass === */
 
 /* --- Global window --- */
 QMainWindow {{
     background: transparent;
 }}
 
-/* --- Container --- */
+/* --- Container (glass backdrop) --- */
 QWidget#Container {{
     background-color: {t("bg_primary")};
-    border: 1px solid {t("border")};
-    border-radius: 10px;
+    border: 1px solid {t("glass_border")};
+    border-radius: 14px;
 }}
 
 QWidget#ContainerMaximized {{
@@ -441,7 +459,7 @@ QWidget#ContainerMaximized {{
     border-radius: 0px;
 }}
 
-/* --- Sidebar --- */
+/* --- Sidebar (glass) --- */
 QWidget[objectName="Sidebar"], QWidget#Sidebar {{
     background-color: {t("sidebar_bg")};
     border-right: 1px solid {t("sidebar_border")};
@@ -449,11 +467,11 @@ QWidget[objectName="Sidebar"], QWidget#Sidebar {{
 
 /* --- Pages --- */
 QWidget#historyPage {{
-    background-color: {t("bg_primary")};
+    background-color: transparent;
 }}
 
 QWidget#settingsPage {{
-    background-color: {t("bg_primary")};
+    background-color: transparent;
 }}
 
 /* --- Charts --- */
@@ -462,9 +480,9 @@ QChartView {{
     border: none;
 }}
 
-/* --- Frames (cards) --- */
+/* --- Frames (glass cards) --- */
 QFrame {{
-    border-color: {t("border")};
+    border-color: {t("glass_border")};
 }}
 
 /* --- Labels --- */
@@ -480,13 +498,13 @@ QScrollArea {{
 
 QScrollBar:vertical {{
     background: transparent;
-    width: 8px;
+    width: 6px;
     margin: 0;
 }}
 
 QScrollBar::handle:vertical {{
-    background: {t("border")};
-    border-radius: 4px;
+    background: {t("glass_border")};
+    border-radius: 3px;
     min-height: 30px;
 }}
 
@@ -500,13 +518,13 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
 
 QScrollBar:horizontal {{
     background: transparent;
-    height: 8px;
+    height: 6px;
     margin: 0;
 }}
 
 QScrollBar::handle:horizontal {{
-    background: {t("border")};
-    border-radius: 4px;
+    background: {t("glass_border")};
+    border-radius: 3px;
     min-width: 30px;
 }}
 
@@ -516,9 +534,9 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
 
 /* --- Reusable tokens --- */
 QWidget[role="chart-card"] {{
-    background: {t("bg_card")};
-    border: 1px solid {t("border")};
-    border-radius: 12px;
+    background: {t("glass_fill")};
+    border: 1px solid {t("glass_border")};
+    border-radius: 16px;
 }}
 
 QLabel[role="muted"] {{

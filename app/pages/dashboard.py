@@ -380,17 +380,19 @@ class DashboardPage(QWidget):
         self.lbl_status.setText(text)
 
     def _quick_add_button_stylesheet(self) -> str:
+        glass_border = ThemeManager.color('glass_border')
         return f"""
             QPushButton {{
                 background-color: {ThemeManager.color('btn_pill_bg')};
                 color: {ThemeManager.color('btn_pill_text')};
-                border: none;
+                border: 1px solid {glass_border};
                 border-radius: 22px;
                 font-weight: bold;
                 font-size: 14px;
             }}
             QPushButton:hover {{
                 background-color: {ThemeManager.color('btn_pill_hover')};
+                border-color: {ThemeManager.color('glass_border_accent')};
             }}
             QPushButton:pressed {{
                 background-color: {ThemeManager.color('btn_pill_pressed')};
@@ -399,41 +401,44 @@ class DashboardPage(QWidget):
 
     def _recent_item_stylesheet(self) -> str:
         accent_border = ThemeManager.qcolor('accent')
-        accent_border.setAlpha(110)
+        accent_border.setAlpha(90)
         accent_border_color = accent_border.name(QColor.NameFormat.HexArgb)
+        glass_fill = ThemeManager.color('glass_fill')
+        glass_border = ThemeManager.color('glass_border')
         return f"""
             QWidget#recent_item_card {{
-                background-color: {ThemeManager.color('bg_card')};
-                border-radius: 12px;
-                border: 1px solid {ThemeManager.color('border_light')};
+                background-color: {glass_fill};
+                border-radius: 14px;
+                border: 1px solid {glass_border};
                 border-left: 3px solid {accent_border_color};
             }}
             QWidget#recent_item_card:hover {{
                 background-color: {ThemeManager.color('bg_hover')};
+                border-color: {ThemeManager.color('glass_border_accent')};
+                border-left: 3px solid {accent_border_color};
             }}
         """
 
     @staticmethod
     def _clear_button_stylesheet() -> str:
         muted = ThemeManager.color('text_muted')
-        hover = ThemeManager.color('bg_hover')
-        pressed = ThemeManager.color('bg_selected')
+        glass_border = ThemeManager.color('glass_border')
         return f"""
             QPushButton {{
-                border: 1px solid {ThemeManager.color('border_light')};
+                border: 1px solid {glass_border};
                 background: transparent;
                 color: {muted};
                 font-size: 12px;
                 padding: 4px 12px;
-                border-radius: 6px;
+                border-radius: 8px;
             }}
             QPushButton:hover {{
                 color: #E53935;
-                border-color: #E53935;
-                background-color: rgba(229, 57, 53, 0.06);
+                border-color: rgba(229, 57, 53, 0.30);
+                background-color: rgba(229, 57, 53, 0.08);
             }}
             QPushButton:pressed {{
-                background-color: rgba(229, 57, 53, 0.12);
+                background-color: rgba(229, 57, 53, 0.14);
             }}
         """
 

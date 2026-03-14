@@ -1,11 +1,11 @@
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
-from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPainter, QPen
+from PySide6.QtCore import Qt, Signal, QRectF, QPointF
+from PySide6.QtGui import QPainter, QPen, QLinearGradient, QColor, QBrush, QPainterPath
 
 from app.core.theme import ThemeManager
 
 class TitleBarButton(QPushButton):
-    """Custom button for title bar controls (Minimize, Maximize, Close)."""
+    """Custom button for title bar controls — liquid glass hover effect."""
     def __init__(self, icon_kind, parent=None, is_close=False):
         super().__init__("", parent)
         self.setFixedSize(46, 40)
@@ -18,6 +18,7 @@ class TitleBarButton(QPushButton):
         text_color = ThemeManager.color("titlebar_btn_text")
         hover_bg = ThemeManager.color("titlebar_close_hover") if self.is_close else ThemeManager.color("titlebar_btn_hover")
         pressed_bg = ThemeManager.color("titlebar_close_pressed") if self.is_close else ThemeManager.color("titlebar_btn_pressed")
+        glass_border = ThemeManager.color("glass_border")
         self._icon_color = ThemeManager.qcolor("titlebar_btn_text")
 
         self.setStyleSheet(
@@ -28,9 +29,11 @@ class TitleBarButton(QPushButton):
                     color: {text_color};
                     font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", sans-serif;
                     font-size: 14px;
+                    border-radius: 8px;
                 }}
                 QPushButton:hover {{
                     background-color: {hover_bg};
+                    border: 0.5px solid {glass_border};
                     color: {text_color};
                 }}
                 QPushButton:pressed {{
@@ -150,7 +153,7 @@ class TitleBar(QWidget):
         self.title_label.setStyleSheet(
             f"font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Segoe UI', system-ui, sans-serif; font-size: 13px; "
             f"font-weight: 600; color: {ThemeManager.color('titlebar_text')}; "
-            "border: none; background: transparent;"
+            "border: none; background: transparent; letter-spacing: 0.5px;"
         )
         self.btn_minimize.apply_theme()
         self.btn_maximize.apply_theme()
