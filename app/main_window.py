@@ -1,10 +1,73 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QSizeGrip
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtCore import Qt, QPoint, QRectF
+from PySide6.QtGui import QMouseEvent, QLinearGradient, QPainter, QColor, QBrush, QPainterPath, QPen
 
 from app.core.theme import ThemeManager
 from app.widgets.title_bar import TitleBar
 from app.widgets.sidebar import Sidebar
+
+
+class GlassContainer(QWidget):
+    """Container widget that paints a gradient backdrop + glass border for the frameless window."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("Container")
+        self._maximized = False
+
+    def set_maximized(self, maximized: bool):
+        self._maximized = maximized
+        self.setObjectName("ContainerMaximized" if maximized else "Container")
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        rect = QRectF(self.rect())
+        radius = 0.0 if self._maximized else 14.0
+
+        # 1. Draw gradient backdrop (the "scene" behind the glass)
+        bg_start = ThemeManager.qcolor("glass_backdrop_start")
+        bg_end = ThemeManager.qcolor("glass_backdrop_end")
+
+        gradient = QLinearGradient(rect.topLeft(), rect.bottomRight())
+        gradient.setColorAt(0.0, bg_start)
+        gradient.setColorAt(1.0, bg_end)
+
+        path = QPainterPath()
+        path.addRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(gradient))
+        painter.drawPath(path)
+
+        # 2. Top-edge specular highlight (light refraction on glass)
+        highlight_grad = QLinearGradient(
+            rect.topLeft(),
+            rect.topLeft() + QPoint(0, int(rect.height() * 0.35)),
+        )
+        highlight_color = ThemeManager.qcolor("glass_highlight")
+        highlight_grad.setColorAt(0.0, highlight_color)
+        highlight_grad.setColorAt(1.0, QColor(255, 255, 255, 0))
+
+        painter.setBrush(QBrush(highlight_grad))
+        painter.drawPath(path)
+
+        # 3. Subtle glass border
+        if not self._maximized:
+            border_color = ThemeManager.qcolor("glass_border")
+            pen = QPen(border_color, 1.0)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPath(path)
+
+        painter.end()
+
+        # Don't call super — we fully own the painting.
+
 
 class MainWindow(QMainWindow):
     """
@@ -34,10 +97,8 @@ class MainWindow(QMainWindow):
         self.centralWidget().setMouseTracking(True)
 
     def _build_ui(self):
-        # Main Container (Central Widget)
-        # We need a container for the shadow effect and rounded corners
-        self.container = QWidget()
-        self.container.setObjectName("Container")
+        # Main Container — glass backdrop with gradient
+        self.container = GlassContainer()
         self.setCentralWidget(self.container)
         
         # Main Layout
@@ -104,13 +165,7 @@ class MainWindow(QMainWindow):
 
     def apply_theme(self):
         _ = ThemeManager.colors()
-        if self.isMaximized():
-            self.container.setObjectName("ContainerMaximized")
-        else:
-            self.container.setObjectName("Container")
-        # Force style refresh
-        self.container.style().unpolish(self.container)
-        self.container.style().polish(self.container)
+        self.container.set_maximized(self.isMaximized())
 
     def _on_theme_applied(self, _theme_name: str):
         self.apply_theme()

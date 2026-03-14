@@ -336,8 +336,11 @@ class SettingsPage(QWidget):
         text_on_accent = ThemeManager.color("text_on_accent")
         bg_input = ThemeManager.color("bg_input")
         border_light = ThemeManager.color("border_light")
+        glass_fill = ThemeManager.color("glass_fill")
+        glass_border = ThemeManager.color("glass_border")
+        glass_border_accent = ThemeManager.color("glass_border_accent")
 
-        self.content_widget.setStyleSheet(f"background-color: {bg_primary};")
+        self.content_widget.setStyleSheet("background-color: transparent;")
         self.title_label.setStyleSheet(
             f"font-size: 24px; font-weight: bold; color: {text_primary}; margin-bottom: 8px;"
         )
@@ -346,27 +349,27 @@ class SettingsPage(QWidget):
             frame.setStyleSheet(
                 f"""
                 QFrame {{
-                    background-color: {bg_card};
-                    border: 1px solid {border};
-                    border-radius: 12px;
+                    background-color: {glass_fill};
+                    border: 1px solid {glass_border};
+                    border-radius: 16px;
                 }}
                 """
             )
 
         for title_lbl in self._section_title_labels:
             title_lbl.setStyleSheet(
-                f"font-size: 16px; font-weight: 600; color: {text_secondary}; border: none;"
+                f"font-size: 16px; font-weight: 600; color: {text_secondary}; border: none; background: transparent;"
             )
 
         for label in self._muted_labels:
-            label.setStyleSheet(f"border: none; color: {text_muted};")
+            label.setStyleSheet(f"border: none; color: {text_muted}; background: transparent;")
 
         self.theme_label.setStyleSheet(
-            f"font-size: 14px; font-weight: 600; color: {text_secondary}; border: none;"
+            f"font-size: 14px; font-weight: 600; color: {text_secondary}; border: none; background: transparent;"
         )
 
         for checkbox in self._checkboxes:
-            checkbox.setStyleSheet(f"QCheckBox {{ color: {text_muted}; border: none; }}")
+            checkbox.setStyleSheet(f"QCheckBox {{ color: {text_muted}; border: none; background: transparent; }}")
 
         for button in self._accent_buttons:
             button.setStyleSheet(
@@ -374,13 +377,14 @@ class SettingsPage(QWidget):
                 QPushButton {{
                     background-color: {accent};
                     color: {text_on_accent};
-                    border: none;
-                    border-radius: 8px;
+                    border: 1px solid {glass_border_accent};
+                    border-radius: 10px;
                     padding: 8px 16px;
                     font-weight: 600;
                 }}
                 QPushButton:hover {{
                     background-color: {accent_hover};
+                    border-color: {accent};
                 }}
                 QPushButton:pressed {{
                     background-color: {accent_light};
@@ -388,16 +392,16 @@ class SettingsPage(QWidget):
                 """
             )
 
-        self.about_title_label.setStyleSheet(f"border: none; font-weight: bold; color: {accent};")
-        self.about_desc_label.setStyleSheet(f"border: none; color: {text_muted};")
+        self.about_title_label.setStyleSheet(f"border: none; font-weight: bold; color: {accent}; background: transparent;")
+        self.about_desc_label.setStyleSheet(f"border: none; color: {text_muted}; background: transparent;")
 
         self.theme_combo.setStyleSheet(
             f"""
             QComboBox {{
                 background-color: {bg_input};
                 color: {text_primary};
-                border: 1px solid {border};
-                border-radius: 8px;
+                border: 1px solid {glass_border};
+                border-radius: 10px;
                 padding: 4px 28px 4px 10px;
                 font-weight: 500;
             }}
@@ -406,10 +410,10 @@ class SettingsPage(QWidget):
                 background-color: {bg_input};
             }}
             QComboBox:hover {{
-                border-color: {accent};
+                border-color: {glass_border_accent};
             }}
             QComboBox:focus {{
-                border-color: {accent_hover};
+                border-color: {accent};
             }}
             QComboBox::drop-down {{
                 subcontrol-origin: padding;
@@ -427,7 +431,7 @@ class SettingsPage(QWidget):
                 max-height: 32px;
             }}
             QSlider::groove:horizontal {{
-                background-color: {border};
+                background-color: {glass_border};
                 height: 4px;
                 border-radius: 2px;
                 margin: 14px 0;
@@ -443,11 +447,11 @@ class SettingsPage(QWidget):
                 margin: 14px 0;
             }}
             QSlider::handle:horizontal {{
-                background-color: {bg_card};
-                width: 14px;
-                height: 14px;
-                margin: -5px 0 -5px 0;
-                border-radius: 7px;
+                background-color: {glass_fill};
+                width: 16px;
+                height: 16px;
+                margin: -6px 0 -6px 0;
+                border-radius: 8px;
                 border: 2px solid {accent};
             }}
             QSlider::handle:horizontal:hover {{

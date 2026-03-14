@@ -1,14 +1,16 @@
 import math
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QButtonGroup
-from PySide6.QtCore import Qt, Signal, QRect, QPointF, QEvent
-from PySide6.QtGui import QPainter, QColor, QFont, QBrush, QPen, QPainterPath
+from PySide6.QtCore import Qt, Signal, QRect, QRectF, QPointF, QEvent
+from PySide6.QtGui import (QPainter, QColor, QFont, QBrush, QPen, QPainterPath,
+                           QLinearGradient)
 
 from app.core.theme import ThemeManager
 
+
 class SidebarButton(QPushButton):
     """
-    Single navigation button in the sidebar.
+    Single navigation button in the sidebar — liquid glass style.
     """
     
     def __init__(self, text, icon_str="water", parent=None):
@@ -37,6 +39,8 @@ class SidebarButton(QPushButton):
         self.text_color_normal = QColor()
         self.text_color_selected = QColor()
         self.icon_color_default = QColor()
+        self._glass_border = QColor()
+        self._glass_highlight = QColor()
         self.apply_theme()
 
     def apply_theme(self):
@@ -46,6 +50,8 @@ class SidebarButton(QPushButton):
         self.text_color_normal = ThemeManager.qcolor("sidebar_text")
         self.text_color_selected = ThemeManager.qcolor("sidebar_text_selected")
         self.icon_color_default = ThemeManager.qcolor("sidebar_icon_default")
+        self._glass_border = ThemeManager.qcolor("glass_border")
+        self._glass_highlight = ThemeManager.qcolor("glass_highlight")
         self.update()
 
     def enterEvent(self, event):
@@ -141,27 +147,44 @@ class SidebarButton(QPushButton):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
         # Determine state
-        bg_color = self.default_bg
         is_selected = self.isChecked()
         is_hovered = self.underMouse()
         
-        if is_selected:
-            bg_color = self.selected_bg
-        elif is_hovered:
-            bg_color = self.hover_bg
-            
-        # Draw background (rounded rect)
+        # Draw glass background (rounded rect)
         rect = self.rect().adjusted(4, 2, -4, -2)
+        rectf = QRectF(rect)
+        glass_radius = 12.0
         
         if is_selected or is_hovered:
+            bg_color = self.selected_bg if is_selected else self.hover_bg
+
+            # Glass fill
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(bg_color))
-            painter.drawRoundedRect(rect, 8, 8)
-        # Draw Left Accent Border if selected
+            path = QPainterPath()
+            path.addRoundedRect(rectf, glass_radius, glass_radius)
+            painter.drawPath(path)
+
+            # Glass specular highlight (top edge)
+            highlight_grad = QLinearGradient(rectf.topLeft(), QPointF(rectf.left(), rectf.top() + rectf.height() * 0.5))
+            highlight_grad.setColorAt(0.0, self._glass_highlight)
+            highlight_grad.setColorAt(1.0, QColor(255, 255, 255, 0))
+            painter.setBrush(QBrush(highlight_grad))
+            highlight_rect = QRectF(rectf.left(), rectf.top(), rectf.width(), rectf.height() * 0.5)
+            highlight_path = QPainterPath()
+            highlight_path.addRoundedRect(highlight_rect, glass_radius, glass_radius)
+            painter.drawPath(path & highlight_path)
+
+            # Glass border
+            pen = QPen(self._glass_border, 0.8)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(rectf, glass_radius, glass_radius)
+
+        # Draw Left Accent Border if selected (liquid accent pill)
         if is_selected:
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(self.accent_color))
-            # 3px wide, full height of the inner rect
             accent_rect = QRect(rect.left(), rect.top() + 6, 4, rect.height() - 12)
             painter.drawRoundedRect(accent_rect, 2, 2)
             
@@ -242,13 +265,16 @@ class Sidebar(QWidget):
 
     def apply_theme(self):
         self.setStyleSheet(
-            f"background-color: {ThemeManager.color('sidebar_bg')}; border-right: 1px solid {ThemeManager.color('sidebar_border')};"
+            f"background-color: {ThemeManager.color('sidebar_bg')};"
+            f"border-right: 1px solid {ThemeManager.color('sidebar_border')};"
         )
         self.branding_label.setStyleSheet(
-            f"font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 800; color: {ThemeManager.color('accent')};"
+            f"font-family: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Segoe UI', sans-serif;"
+            f"font-size: 18px; font-weight: 800; color: {ThemeManager.color('accent')};"
+            f"background: transparent;"
         )
         self.version_label.setStyleSheet(
-            f"color: {ThemeManager.color('sidebar_version')}; font-size: 10px;"
+            f"color: {ThemeManager.color('sidebar_version')}; font-size: 10px; background: transparent;"
         )
 
         for btn in (self.btn_dashboard, self.btn_history, self.btn_settings):
