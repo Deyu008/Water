@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QEasingCurve, QPoint, QPointF, QPropertyAnimation, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QApplication, QPushButton, QGraphicsDropShadowEffect, QWidget
 
@@ -145,10 +145,9 @@ class ToastReminder(QWidget):
 
         # Glass specular highlight (top portion)
         highlight_color = ThemeManager.qcolor("glass_highlight")
-        from PySide6.QtCore import QPointF as _QPointF
         highlight_grad = QLinearGradient(
-            _QPointF(rect.left(), rect.top()),
-            _QPointF(rect.left(), rect.top() + rect.height() * 0.4),
+            QPointF(rect.left(), rect.top()),
+            QPointF(rect.left(), rect.top() + rect.height() * 0.4),
         )
         highlight_grad.setColorAt(0.0, highlight_color)
         highlight_grad.setColorAt(1.0, QColor(255, 255, 255, 0))

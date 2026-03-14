@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QSizeGrip
 from PySide6.QtCore import Qt, QPoint, QRectF
-from PySide6.QtGui import QMouseEvent, QLinearGradient, QPainter, QColor, QBrush, QPainterPath
+from PySide6.QtGui import QMouseEvent, QLinearGradient, QPainter, QColor, QBrush, QPainterPath, QPen
 
 from app.core.theme import ThemeManager
 from app.widgets.title_bar import TitleBar
@@ -59,7 +59,6 @@ class GlassContainer(QWidget):
         # 3. Subtle glass border
         if not self._maximized:
             border_color = ThemeManager.qcolor("glass_border")
-            from PySide6.QtGui import QPen
             pen = QPen(border_color, 1.0)
             painter.setPen(pen)
             painter.setBrush(Qt.BrushStyle.NoBrush)
